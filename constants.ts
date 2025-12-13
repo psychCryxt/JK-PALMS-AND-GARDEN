@@ -1,48 +1,59 @@
-import { ServiceItem, Testimonial } from './types';
+import { ServiceItem, Testimonial, FeatureItem } from './types';
 
 export const HERO_TITLE = "Adventure Blooms, Laughter Echoes";
 export const HERO_SUBTITLE = "Escape the hustle. Embrace nature. Create memories in our lush oasis.";
 
-export const FEATURES = [
+export const INITIAL_FEATURES: FeatureItem[] = [
   {
     title: "Indoor Gaming",
     description: "Equipped with high-quality snooker tables and accessories for a premium experience.",
-    image: "https://picsum.photos/id/20/800/600"
+    image: "https://jkpalmandgarden.com/img/WhatsApp%20Image%202024-10-03%20at%2010.54.47_b5fb30b4.jpg"
   },
   {
     title: "Restaurants",
     description: "Diverse menu highlighting seasonal ingredients and local flavors for a memorable evening.",
-    image: "https://picsum.photos/id/42/800/600"
+    image: "https://jkpalmandgarden.com/img/WhatsApp%20Image%202024-10-03%20at%2010.54.48_dcdc29b3.jpg"
   },
   {
     title: "Sports",
     description: "High-quality terrain football pitch perfect for full-sized matches or casual games.",
-    image: "https://picsum.photos/id/158/800/600"
+    image: "https://jkpalmandgarden.com/img/WhatsApp%20Image%202024-10-03%20at%2011.32.29_c5f4445a.jpg"
   },
   {
     title: "Palm Garden",
     description: "A serene botanical escape filled with exotic palms and vibrant flora for relaxation.",
-    image: "https://picsum.photos/id/28/800/600"
+    image: "https://jkpalmandgarden.com/img/exp1.jpg"
   },
   {
     title: "The Courtyard",
     description: "An elegant open-air space designed for hosting grand events and gatherings.",
-    image: "https://picsum.photos/id/57/800/600"
+    image: "https://jkpalmandgarden.com/img/exp3.jpg"
   },
   {
     title: "Kids Playground",
     description: "A safe, fun-filled zone with modern equipment for children to explore and play.",
-    image: "https://picsum.photos/id/88/800/600"
+    image: "https://jkpalmandgarden.com/img/j10.jpg"
   }
 ];
 
-export const SERVICES: ServiceItem[] = [
+export const INITIAL_SERVICES: ServiceItem[] = [
   { id: 1, title: "Pavilion", description: "Perfect spot to gather, celebrate, or simply enjoy the beauty.", icon: "home" },
   { id: 2, title: "Delicious Food", description: "Mouthwatering dishes crafted to delight your taste buds.", icon: "coffee" },
   { id: 3, title: "Safety Lockers", description: "24/7 security with CCTV watch towers and secure lockers.", icon: "lock" },
   { id: 4, title: "Play Ground", description: "Safe and fun space for kids to run, climb, and explore.", icon: "smile" },
   { id: 5, title: "Event Hosting", description: "Full-service hosting for weddings, birthdays, and corporate retreats.", icon: "party" },
   { id: 6, title: "Garden Parties", description: "Exclusive access to our gardens for intimate outdoor celebrations.", icon: "tree" }
+];
+
+export const INITIAL_GALLERY_IMAGES = [
+  "https://jkpalmandgarden.com/img/exp5%20(2).jpg",
+  "https://jkpalmandgarden.com/img/j5.jpg",
+  "https://jkpalmandgarden.com/img/j4.jpg",
+  "https://jkpalmandgarden.com/img/j12.jpg",
+  "https://jkpalmandgarden.com/img/j3.jpg",
+  "https://jkpalmandgarden.com/img/j13.jpg",
+  "https://jkpalmandgarden.com/img/j9.jpg",
+  "https://jkpalmandgarden.com/img/exp4.jpg"
 ];
 
 export const TESTIMONIALS: Testimonial[] = [

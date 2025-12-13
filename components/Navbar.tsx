@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Menu, X, Sun, Moon, TreePalm } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -10,13 +10,11 @@ interface NavbarProps {
 
 const Navbar: React.FC<NavbarProps> = ({ darkMode, toggleDarkMode }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const location = useLocation();
 
   const navLinks = [
     { name: 'Home', path: '/' },
     { name: 'About', path: '/#about' },
     { name: 'Services', path: '/#services' },
-    { name: 'Events', path: '/#events' },
     { name: 'Contact', path: '/#contact' },
     { name: 'Book Now', path: '/booking', isCta: true },
   ];

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { GlassCard, GlassButton } from './GlassUI';
-import { BookingState, VenueType } from '../types';
-import { Calendar, Clock, User, CheckCircle, AlertCircle } from 'lucide-react';
+import { BookingState, VenueType, BookingRecord } from '../types';
+import { Calendar, Clock, User, CheckCircle, AlertCircle, Loader2, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useData } from '../context/DataContext';
+import { supabase } from '../lib/supabase';
 
 const VENUES: { type: VenueType; price: number; unit: string }[] = [
   { type: 'Football Pitch', price: 15000, unit: '/hour' },
@@ -12,13 +14,31 @@ const VENUES: { type: VenueType; price: number; unit: string }[] = [
 ];
 
 const Booking: React.FC = () => {
+  const { addBooking } = useData();
   const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [bookingCode, setBookingCode] = useState('');
+  
+  // Availability State
+  const [existingBookings, setExistingBookings] = useState<any[]>([]);
+  const [loadingAvailability, setLoadingAvailability] = useState(false);
+  const [calendarOffset, setCalendarOffset] = useState(0); // Days to offset calendar view
+
+  // Helper to get local YYYY-MM-DD string
+  const getLocalDateString = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [formData, setFormData] = useState<BookingState>({
     name: '',
     email: '',
     phone: '',
     venue: 'Football Pitch',
-    date: '',
+    date: getLocalDateString(new Date()), // Default to today
     endDate: '',
     time: '',
     duration: 1,
@@ -27,6 +47,34 @@ const Booking: React.FC = () => {
   });
 
   const [totalPrice, setTotalPrice] = useState(0);
+
+  // Fetch existing bookings when Venue changes to show availability
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      setLoadingAvailability(true);
+      try {
+        // Fetch bookings starting from beginning of today to ensure calendar is accurate
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const { data, error } = await supabase
+          .from('bookings')
+          .select('start_time, end_time, status')
+          .eq('venue', formData.venue)
+          .neq('status', 'Rejected') // Ignore rejected bookings
+          .gte('start_time', today.toISOString()); // Bookings from today onwards
+
+        if (error) throw error;
+        setExistingBookings(data || []);
+      } catch (err) {
+        console.error("Error fetching availability:", err);
+      } finally {
+        setLoadingAvailability(false);
+      }
+    };
+
+    fetchAvailability();
+  }, [formData.venue]);
 
   useEffect(() => {
     // Pricing Logic
@@ -38,7 +86,7 @@ const Booking: React.FC = () => {
       price = selectedVenue.price * (formData.duration || 1);
     } else if (formData.venue === 'Kids Playground') {
        price = (formData.guests?.children || 0) * selectedVenue.price;
-       if (price === 0) price = 5000; // Base estimate
+       if (price === 0 && (formData.guests?.children || 0) === 0) price = 0; 
     } else {
       // Per day calculation for Courtyard/Palm Garden
       let days = 1;
@@ -56,6 +104,14 @@ const Booking: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+
+    // Sanitize Phone Number
+    if (name === 'phone') {
+      const sanitizedValue = value.replace(/[^0-9+\-\s()]/g, '');
+      setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
+      return;
+    }
+
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -66,27 +122,213 @@ const Booking: React.FC = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setStep(3); // Success state
+  const checkConflict = async (start: string, end: string) => {
+    // Check database for overlaps
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('id')
+      .eq('venue', formData.venue)
+      .neq('status', 'Rejected')
+      .lt('start_time', end) // Existing Start < New End
+      .gt('end_time', start); // Existing End > New Start
+
+    if (error) throw error;
+    return data && data.length > 0;
   };
 
-  // Mock Calendar Visualization
-  const renderCalendarMock = () => {
-    const days = Array.from({ length: 7 }, (_, i) => i + 20); // Mock days 20th-26th
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitError('');
+
+    try {
+      // 1. Time Calculation
+      let startDateTime = '';
+      let stopDateTime = '';
+
+      if (formData.venue === 'Football Pitch') {
+        if (!formData.time || !formData.date) {
+          throw new Error('Please select both date and time.');
+        }
+        
+        const isoStart = `${formData.date}T${formData.time}:00`;
+        const startDateObj = new Date(isoStart);
+        
+        if (isNaN(startDateObj.getTime())) {
+          throw new Error("Invalid Date or Time selected");
+        }
+
+        startDateTime = startDateObj.toISOString();
+
+        // Calculate Stop based on duration
+        const durationHours = formData.duration || 1;
+        const stopDateObj = new Date(startDateObj.getTime() + durationHours * 60 * 60 * 1000);
+        stopDateTime = stopDateObj.toISOString();
+
+      } else {
+        if (!formData.date) {
+           throw new Error('Please select a start date.');
+        }
+        // Set to start of day for accurate full-day locking
+        startDateTime = new Date(`${formData.date}T00:00:00`).toISOString();
+        
+        const endDate = formData.endDate || formData.date;
+        // Set to end of day
+        stopDateTime = new Date(`${endDate}T23:59:59`).toISOString();
+      }
+
+      // 2. Conflict Check (Server Side)
+      const hasConflict = await checkConflict(startDateTime, stopDateTime);
+      if (hasConflict) {
+        throw new Error(
+          formData.venue === 'Football Pitch' 
+            ? "This time slot is already booked. Please choose another time." 
+            : "This date is already fully booked. Please check availability."
+        );
+      }
+
+      // 3. Generate Booking Code
+      const code = `JK-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+
+      // 4. Insert into Supabase
+      const { error } = await supabase
+        .from('bookings')
+        .insert([
+          {
+            booking_code: code,
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            venue: formData.venue,
+            start_time: startDateTime,
+            end_time: stopDateTime,
+            duration: formData.duration || 0,
+            guests_adults: formData.guests?.adults || 0,
+            guests_children: formData.guests?.children || 0,
+            price: totalPrice,
+            message: formData.message,
+            status: 'Pending'
+          }
+        ]);
+
+      if (error) {
+        console.error('Supabase Error:', error);
+        throw new Error(error.message || 'Database insert failed.');
+      }
+
+      // 5. Success State
+      setBookingCode(code);
+      setStep(3);
+      
+      addBooking({
+        ...formData,
+        id: code,
+        status: 'Pending',
+        submissionDate: new Date().toISOString(),
+        totalPrice: totalPrice
+      });
+
+    } catch (error: any) {
+      console.error('Submission Error:', error);
+      let msg = error.message || 'An unexpected error occurred.';
+      if (msg.includes('apikey')) {
+        msg = 'Database configuration missing. Please check connection.';
+      }
+      setSubmitError(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Dynamic Calendar Logic
+  const renderCalendarReal = () => {
+    // Generate 7 days based on offset
+    const days = [];
+    const today = new Date();
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() + calendarOffset);
+    
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(startDate);
+      d.setDate(startDate.getDate() + i);
+      days.push(d);
+    }
+
+    // Month Label
+    const monthLabel = startDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+
     return (
-      <div className="grid grid-cols-7 gap-2 text-center mb-6">
-        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => <span key={d} className="text-xs font-bold text-gray-500">{d}</span>)}
-        {days.map(d => {
-          const status = d % 3 === 0 ? 'booked' : d % 4 === 0 ? 'pending' : 'available';
-          const color = status === 'booked' ? 'bg-red-400/50' : status === 'pending' ? 'bg-yellow-400/50' : 'bg-emerald-400/30 hover:bg-emerald-500 cursor-pointer';
-          return (
-            <div key={d} className={`aspect-square rounded-lg flex items-center justify-center text-sm ${color}`}>
-              {d}
-            </div>
-          )
-        })}
-      </div>
+      <>
+        <div className="flex justify-between items-center mb-2 px-1">
+          <button 
+            onClick={() => setCalendarOffset(prev => Math.max(0, prev - 7))}
+            disabled={calendarOffset === 0}
+            className={`p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors ${calendarOffset === 0 ? 'opacity-30 cursor-not-allowed' : ''}`}
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{monthLabel}</span>
+          <button 
+            onClick={() => setCalendarOffset(prev => prev + 7)}
+            className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-7 gap-2 text-center mb-6">
+          {days.map((d, i) => (
+            <span key={`h-${i}`} className="text-[10px] font-bold text-gray-500 uppercase">
+              {d.toLocaleDateString('en-US', { weekday: 'narrow' })}
+            </span>
+          ))}
+          
+          {days.map((d, i) => {
+            // Check status for this day
+            const dateStr = getLocalDateString(d);
+            
+            let status = 'available';
+            
+            // Check availability
+            // Convert booking timestamps to local date strings for comparison
+            const hasBooking = existingBookings.find(b => {
+              const bookingDate = new Date(b.start_time);
+              const bookingDateStr = getLocalDateString(bookingDate);
+              return bookingDateStr === dateStr;
+            });
+
+            if (hasBooking) {
+              status = hasBooking.status === 'Approved' ? 'booked' : 'pending';
+            }
+            
+            // Highlight selected day
+            const isSelected = formData.date === dateStr;
+
+            const color = status === 'booked' 
+              ? 'bg-red-400/50 text-red-900 dark:text-red-100' 
+              : status === 'pending' 
+                ? 'bg-yellow-400/50 text-yellow-900 dark:text-yellow-100' 
+                : isSelected
+                  ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/50'
+                  : 'bg-emerald-400/30 hover:bg-emerald-500 hover:text-white cursor-pointer text-emerald-900 dark:text-emerald-100';
+
+            return (
+              <div 
+                key={i} 
+                onClick={() => {
+                   // Allow selecting a day even if it has bookings (esp for Football pitch where only hours are blocked)
+                   // But if it's a full day venue and 'booked', maybe warn or disable? 
+                   // For now, let's allow selection so user can try specific times or see error.
+                   setFormData(prev => ({ ...prev, date: dateStr }));
+                }}
+                className={`aspect-square rounded-lg flex flex-col items-center justify-center text-xs transition-all duration-300 ${color}`}
+              >
+                <span className="font-bold">{d.getDate()}</span>
+              </div>
+            )
+          })}
+        </div>
+      </>
     );
   };
 
@@ -111,7 +353,9 @@ const Booking: React.FC = () => {
             </motion.div>
             <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Booking Request Submitted!</h2>
             <p className="text-gray-600 dark:text-gray-300 mb-8 max-w-md mx-auto">
-              We have received your request for <strong>{formData.venue}</strong>. An admin will review the availability and confirm your booking via email ({formData.email}) shortly.
+              Your booking for <strong>{formData.venue}</strong> has been received. <br/>
+              Booking Code: <span className="font-mono font-bold text-emerald-500">{bookingCode}</span><br/>
+              A confirmation email has been sent to {formData.email}.
             </p>
             <GlassButton onClick={() => window.location.href = '/'} variant="secondary">Back to Home</GlassButton>
           </GlassCard>
@@ -206,7 +450,6 @@ const Booking: React.FC = () => {
                       )}
                     </div>
 
-                    {/* Football Duration Logic */}
                     {formData.venue === 'Football Pitch' && (
                       <div>
                         <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Duration (Hours)</label>
@@ -228,7 +471,6 @@ const Booking: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Guest Count for non-football */}
                     {formData.venue !== 'Football Pitch' && (
                       <div className="grid grid-cols-2 gap-4">
                         <div className="bg-white/30 dark:bg-black/20 p-3 rounded-lg">
@@ -248,8 +490,20 @@ const Booking: React.FC = () => {
                     </div>
                   </div>
 
-                  <GlassButton type="submit" className="w-full justify-center mt-6">
-                    Confirm & Submit Booking
+                  {submitError && (
+                    <div className="p-4 bg-red-500/20 border border-red-500 text-red-600 dark:text-red-300 rounded-lg text-sm">
+                      {submitError}
+                    </div>
+                  )}
+
+                  <GlassButton type="submit" className="w-full justify-center mt-6" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="animate-spin" /> Checking Availability...
+                      </span>
+                    ) : (
+                      "Confirm & Submit Booking"
+                    )}
                   </GlassButton>
                 </form>
               </GlassCard>
@@ -260,13 +514,19 @@ const Booking: React.FC = () => {
                <div className="sticky top-28 space-y-6">
                  {/* Calendar Preview */}
                  <GlassCard className="p-4">
-                   <h4 className="text-sm font-bold mb-4 text-gray-700 dark:text-gray-300">Availability Preview</h4>
-                   {renderCalendarMock()}
-                   <div className="flex gap-2 text-[10px] justify-center text-gray-500">
+                   <div className="flex justify-between items-center mb-4">
+                      <h4 className="text-sm font-bold text-gray-700 dark:text-gray-300">Live Availability</h4>
+                      {loadingAvailability && <RefreshCw className="animate-spin text-emerald-500" size={14} />}
+                   </div>
+                   
+                   {renderCalendarReal()}
+
+                   <div className="flex gap-2 text-[10px] justify-center text-gray-500 mt-4">
                      <span className="flex items-center gap-1"><div className="w-2 h-2 bg-emerald-400 rounded-full"></div>Avail</span>
-                     <span className="flex items-center gap-1"><div className="w-2 h-2 bg-yellow-400 rounded-full"></div>Pending</span>
+                     <span className="flex items-center gap-1"><div className="w-2 h-2 bg-yellow-400 rounded-full"></div>Busy</span>
                      <span className="flex items-center gap-1"><div className="w-2 h-2 bg-red-400 rounded-full"></div>Booked</span>
                    </div>
+                   
                  </GlassCard>
 
                  {/* Price Summary */}

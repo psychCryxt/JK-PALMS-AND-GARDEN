@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, HTMLMotionProps } from 'framer-motion';
 
 interface GlassCardProps {
   children: React.ReactNode;
@@ -23,7 +23,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({ children, className = '', 
   );
 };
 
-interface GlassButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface GlassButtonProps extends HTMLMotionProps<"button"> {
   variant?: 'primary' | 'secondary';
   children: React.ReactNode;
 }

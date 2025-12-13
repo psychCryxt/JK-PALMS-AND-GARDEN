@@ -2,13 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
 import { ArrowRight, Utensils, Lock, Smile, Home as HomeIcon, Clock, PartyPopper, Trees, X, ChevronUp } from 'lucide-react';
-import { HERO_TITLE, HERO_SUBTITLE, FEATURES, SERVICES, TESTIMONIALS } from '../constants';
+import { HERO_TITLE, HERO_SUBTITLE, TESTIMONIALS } from '../constants';
 import { GlassCard, GlassButton } from './GlassUI';
+import { useData } from '../context/DataContext';
 
 const Home: React.FC = () => {
   const { hash } = useLocation();
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  
+  // Use Data from Context
+  const { features, services, galleryImages } = useData();
 
   // Handle Hash Scrolling
   useEffect(() => {
@@ -67,11 +71,6 @@ const Home: React.FC = () => {
                   Book Your Visit <ArrowRight size={18} />
                 </GlassButton>
               </Link>
-              <a href="#features">
-                <GlassButton variant="secondary">
-                  Explore Features
-                </GlassButton>
-              </a>
             </div>
             
             {/* Stats */}
@@ -98,18 +97,17 @@ const Home: React.FC = () => {
             <div className="relative w-full h-[600px]">
               <div className="absolute inset-0 bg-emerald-500/20 blur-3xl rounded-full"></div>
               <img 
-                src="https://picsum.photos/id/116/800/1000" 
+                src="https://jkpalmandgarden.com/img/captured3.jpg" 
                 alt="Nature" 
                 className="rounded-3xl shadow-2xl object-cover w-full h-full border-4 border-white/30 transform hover:scale-105 transition-duration-500"
               />
-              {/* Floating element removed as requested */}
             </div>
           </motion.div>
         </div>
       </section>
 
       {/* About Section */}
-      <section id="about" className="py-24 px-4 bg-white/5">
+      <section id="about" className="py-24 px-4 bg-white/50 dark:bg-white/5 backdrop-blur-md shadow-sm border-y border-white/30 dark:border-white/10">
         <div className="max-w-4xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -140,7 +138,7 @@ const Home: React.FC = () => {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {FEATURES.map((feature, index) => (
+            {features.map((feature, index) => (
               <GlassCard key={index} delay={index * 0.2} hoverEffect className="group overflow-hidden">
                 <div className="h-48 mb-6 overflow-hidden rounded-xl">
                   <img 
@@ -159,18 +157,17 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* Services Section (Includes Events) */}
-      <section id="services" className="py-24 px-4 bg-white/5 backdrop-blur-sm">
+      {/* Services Section */}
+      <section id="services" className="py-24 px-4 bg-white/50 dark:bg-white/5 backdrop-blur-md shadow-sm border-y border-white/30 dark:border-white/10">
         <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
           <div>
             <h2 className="text-4xl font-bold mb-6 text-gray-800 dark:text-white">Our Services & Events</h2>
-            <div id="events"></div> {/* Anchor for events link */}
             <p className="text-gray-600 dark:text-gray-300 mb-8">
               From guided nature walks to event hosting, we offer a variety of services designed to enhance your experience. We host parties, corporate events, and weddings in our beautiful Courtyard and Palm Garden.
             </p>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {SERVICES.map((service) => {
+              {services.map((service) => {
                  const icons: any = { 
                    home: HomeIcon, 
                    coffee: Utensils, 
@@ -181,7 +178,7 @@ const Home: React.FC = () => {
                  };
                  const Icon = icons[service.icon] || HomeIcon;
                  return (
-                   <div key={service.id} className="flex gap-4 p-4 rounded-xl bg-white/40 dark:bg-black/20 hover:bg-white/60 transition-colors">
+                   <div key={service.id} className="flex gap-4 p-4 rounded-xl bg-white/40 dark:bg-black/20 hover:bg-white/60 transition-colors border border-white/10">
                      <div className="bg-emerald-100 dark:bg-emerald-900 p-3 rounded-lg h-fit">
                        <Icon className="text-emerald-600 dark:text-emerald-400" size={24} />
                      </div>
@@ -227,15 +224,15 @@ const Home: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           <h2 className="text-4xl font-bold mb-12 text-center text-gray-800 dark:text-white">Our Gallery</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 auto-rows-[200px]">
-            {[10, 15, 16, 28, 29, 11, 12, 14].map((id, idx) => (
+            {galleryImages.map((image, idx) => (
               <motion.div 
-                key={id}
+                key={idx}
                 whileHover={{ scale: 1.05, zIndex: 10 }}
                 className={`cursor-pointer rounded-2xl overflow-hidden shadow-lg border-2 border-white/20 relative group ${idx === 0 || idx === 5 ? 'md:col-span-2 md:row-span-2' : ''}`}
-                onClick={() => setLightboxImage(`https://picsum.photos/id/${id}/1200/1200`)}
+                onClick={() => setLightboxImage(image)}
               >
                 <img 
-                  src={`https://picsum.photos/id/${id}/800/800`} 
+                  src={image} 
                   alt="Gallery" 
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 />
@@ -249,7 +246,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* Testimonials */}
-      <section id="testimonials" className="py-24 px-4">
+      <section id="testimonials" className="py-24 px-4 bg-emerald-50/50 dark:bg-transparent backdrop-blur-sm border-y border-white/30 dark:border-transparent">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-4xl font-bold mb-12 text-center text-gray-800 dark:text-white">Client Reviews</h2>
           <div className="grid md:grid-cols-3 gap-8">

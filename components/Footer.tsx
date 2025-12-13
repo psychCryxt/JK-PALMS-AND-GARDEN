@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { CONTACT_INFO } from '../constants';
 import { Facebook, Instagram, Twitter, Mail, Phone, MapPin } from 'lucide-react';
 
@@ -14,9 +15,15 @@ const Footer: React.FC = () => {
               Where adventure blooms and laughter echoes through the trees! Embrace the beauty of nature while enjoying moments of pure fun.
             </p>
             <div className="flex gap-4">
-              <div className="p-2 bg-white/20 rounded-full hover:bg-emerald-500 hover:text-white transition-colors cursor-pointer"><Facebook size={18}/></div>
-              <div className="p-2 bg-white/20 rounded-full hover:bg-emerald-500 hover:text-white transition-colors cursor-pointer"><Instagram size={18}/></div>
-              <div className="p-2 bg-white/20 rounded-full hover:bg-emerald-500 hover:text-white transition-colors cursor-pointer"><Twitter size={18}/></div>
+              <a href="https://web.facebook.com/JKPalmsGarden/?_rdc=1&_rdr" target="_blank" rel="noopener noreferrer" className="p-2 bg-white/20 rounded-full hover:bg-emerald-500 hover:text-white transition-colors cursor-pointer">
+                <Facebook size={18}/>
+              </a>
+              <a href="https://www.instagram.com/jkpalms/" target="_blank" rel="noopener noreferrer" className="p-2 bg-white/20 rounded-full hover:bg-emerald-500 hover:text-white transition-colors cursor-pointer">
+                <Instagram size={18}/>
+              </a>
+              <a href="#" className="p-2 bg-white/20 rounded-full hover:bg-emerald-500 hover:text-white transition-colors cursor-pointer">
+                <Twitter size={18}/>
+              </a>
             </div>
           </div>
 
@@ -41,11 +48,11 @@ const Footer: React.FC = () => {
           <div>
             <h4 className="text-lg font-semibold mb-6 border-b border-emerald-500/30 pb-2 inline-block">Quick Links</h4>
             <ul className="space-y-3 text-sm">
-              {['Home', 'About Us', 'Events', 'Contact Us', 'Admin Login'].map(link => (
-                <li key={link}>
-                  <a href="#" className="hover:text-emerald-500 hover:pl-2 transition-all block">→ {link}</a>
-                </li>
-              ))}
+              <li><Link to="/" className="hover:text-emerald-500 hover:pl-2 transition-all block">→ Home</Link></li>
+              <li><a href="/#about" className="hover:text-emerald-500 hover:pl-2 transition-all block">→ About Us</a></li>
+              <li><a href="/#services" className="hover:text-emerald-500 hover:pl-2 transition-all block">→ Services</a></li>
+              <li><a href="/#contact" className="hover:text-emerald-500 hover:pl-2 transition-all block">→ Contact Us</a></li>
+              <li><Link to="/admin" className="hover:text-emerald-500 hover:pl-2 transition-all block font-bold text-emerald-600 dark:text-emerald-400">→ Admin Login</Link></li>
             </ul>
           </div>
 

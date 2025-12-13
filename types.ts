@@ -15,6 +15,12 @@ export interface ServiceItem {
   icon: string;
 }
 
+export interface FeatureItem {
+  title: string;
+  description: string;
+  image: string;
+}
+
 export interface TeamMember {
   id: number;
   name: string;
@@ -37,6 +43,13 @@ export interface BookingState {
     children: number;
   };
   message: string;
+}
+
+export interface BookingRecord extends BookingState {
+  id: string;
+  status: 'Pending' | 'Approved' | 'Rejected';
+  submissionDate: string;
+  totalPrice: number;
 }
 
 export interface BlogPost {
