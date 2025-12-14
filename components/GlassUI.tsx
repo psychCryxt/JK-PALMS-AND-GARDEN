@@ -31,7 +31,7 @@ interface GlassButtonProps extends HTMLMotionProps<"button"> {
 export const GlassButton: React.FC<GlassButtonProps> = ({ variant = 'primary', children, className = '', ...props }) => {
   const baseStyle = "px-6 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 shadow-lg";
   const variants = {
-    primary: "bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:shadow-emerald-500/30 hover:scale-105 border border-white/20",
+    primary: "bg-gradient-to-r from-blue-500 to-emerald-500 text-white hover:shadow-emerald-500/30 hover:scale-105 border border-white/20",
     secondary: "bg-white/10 text-emerald-900 dark:text-white border border-white/30 hover:bg-white/20 hover:scale-105 backdrop-blur-md"
   };
 

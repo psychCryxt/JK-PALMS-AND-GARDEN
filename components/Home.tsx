@@ -59,7 +59,7 @@ const Home: React.FC = () => {
             <div className="inline-block px-4 py-1 rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-sm font-semibold mb-6 border border-emerald-500/30">
               Welcome to JK Palms & Garden
             </div>
-            <h1 className="text-5xl md:text-7xl font-bold leading-tight mb-6 bg-clip-text text-transparent bg-gradient-to-r from-emerald-800 to-teal-600 dark:from-white dark:to-emerald-200">
+            <h1 className="text-5xl md:text-7xl font-bold leading-tight mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-700 via-emerald-600 to-teal-500 dark:from-white dark:to-emerald-200">
               {HERO_TITLE}
             </h1>
             <p className="text-lg text-gray-700 dark:text-gray-300 mb-8 max-w-lg leading-relaxed glass-panel p-4 rounded-xl">
@@ -74,11 +74,10 @@ const Home: React.FC = () => {
             </div>
             
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-6 mt-12">
+            <div className="grid grid-cols-2 gap-6 mt-12 w-fit">
               {[
                 { label: 'Happy Visitors', val: '20K+' },
-                { label: 'Services', val: '15+' },
-                { label: 'Experience', val: '3 Years' }
+                { label: 'Services Offered', val: '15+' }
               ].map((stat, idx) => (
                 <div key={idx} className="text-center">
                   <h4 className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{stat.val}</h4>

@@ -1,20 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { GlassCard, GlassButton } from './GlassUI';
 import { BookingState, VenueType, BookingRecord } from '../types';
 import { Calendar, Clock, User, CheckCircle, AlertCircle, Loader2, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { supabase } from '../lib/supabase';
+import emailjs from '@emailjs/browser';
 
 const VENUES: { type: VenueType; price: number; unit: string }[] = [
-  { type: 'Football Pitch', price: 15000, unit: '/hour' },
+  { type: 'Football Pitch', price: 8000, unit: '/hour' },
   { type: 'Courtyard', price: 100000, unit: '/day' },
-  { type: 'Palm Garden', price: 80000, unit: '/day' },
-  { type: 'Kids Playground', price: 2000, unit: '/child' },
+  { type: 'Palm Garden', price: 100000, unit: '/day' },
+  { type: 'Kids Playground', price: 200, unit: '/person' },
 ];
+
+const SERVICE_ID = 'service_c57rfmu';
+const TEMPLATE_ID = 'template_6jxnaaf';
+const PUBLIC_KEY = 'RXXbFYl19spWvwbwS';
 
 const Booking: React.FC = () => {
   const { addBooking } = useData();
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -24,6 +31,15 @@ const Booking: React.FC = () => {
   const [existingBookings, setExistingBookings] = useState<any[]>([]);
   const [loadingAvailability, setLoadingAvailability] = useState(false);
   const [calendarOffset, setCalendarOffset] = useState(0); // Days to offset calendar view
+
+  // Initialize EmailJS
+  useEffect(() => {
+    try {
+      emailjs.init(PUBLIC_KEY);
+    } catch (e) {
+      console.warn("EmailJS init warning:", e);
+    }
+  }, []);
 
   // Helper to get local YYYY-MM-DD string
   const getLocalDateString = (date: Date) => {
@@ -85,8 +101,9 @@ const Booking: React.FC = () => {
     if (formData.venue === 'Football Pitch') {
       price = selectedVenue.price * (formData.duration || 1);
     } else if (formData.venue === 'Kids Playground') {
-       price = (formData.guests?.children || 0) * selectedVenue.price;
-       if (price === 0 && (formData.guests?.children || 0) === 0) price = 0; 
+       // 200 naira gate fee per individual (adults + children)
+       const totalGuests = (formData.guests?.children || 0) + (formData.guests?.adults || 0);
+       price = totalGuests * selectedVenue.price;
     } else {
       // Per day calculation for Courtyard/Palm Garden
       let days = 1;
@@ -216,7 +233,41 @@ const Booking: React.FC = () => {
         throw new Error(error.message || 'Database insert failed.');
       }
 
-      // 5. Success State
+      // 5. Send Confirmation Email via EmailJS
+      try {
+        console.log("Preparing to send email to:", formData.email);
+        const templateParams = {
+          to_name: formData.name,
+          to_email: formData.email,
+          booking_code: code,
+          venue: formData.venue,
+          date: formData.date,
+          time: formData.venue === 'Football Pitch' ? formData.time : 'Full Day',
+          total_price: totalPrice.toLocaleString(),
+          message: formData.message || 'No additional notes',
+          reply_to: 'bookings@jkpalmandgarden.com'
+        };
+
+        const response = await emailjs.send(
+          SERVICE_ID,
+          TEMPLATE_ID,
+          templateParams,
+          PUBLIC_KEY
+        );
+        console.log("Confirmation email sent successfully!", response);
+
+      } catch (emailError: any) {
+        console.error("Failed to send confirmation email:", emailError);
+        // Improved Error Logging
+        if (emailError && emailError.text) {
+             console.error("EmailJS Error Text:", emailError.text);
+             // alert("Email Error: " + emailError.text); // Uncomment to see error in alert
+        } else {
+             console.error("EmailJS Error Details:", JSON.stringify(emailError));
+        }
+      }
+
+      // 6. Success State
       setBookingCode(code);
       setStep(3);
       
@@ -248,6 +299,7 @@ const Booking: React.FC = () => {
     const startDate = new Date(today);
     startDate.setDate(today.getDate() + calendarOffset);
     
+    // Correct logic for calendar days
     for (let i = 0; i < 7; i++) {
       const d = new Date(startDate);
       d.setDate(startDate.getDate() + i);
@@ -261,6 +313,7 @@ const Booking: React.FC = () => {
       <>
         <div className="flex justify-between items-center mb-2 px-1">
           <button 
+            type="button"
             onClick={() => setCalendarOffset(prev => Math.max(0, prev - 7))}
             disabled={calendarOffset === 0}
             className={`p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors ${calendarOffset === 0 ? 'opacity-30 cursor-not-allowed' : ''}`}
@@ -269,6 +322,7 @@ const Booking: React.FC = () => {
           </button>
           <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{monthLabel}</span>
           <button 
+            type="button"
             onClick={() => setCalendarOffset(prev => prev + 7)}
             className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
           >
@@ -309,16 +363,14 @@ const Booking: React.FC = () => {
               : status === 'pending' 
                 ? 'bg-yellow-400/50 text-yellow-900 dark:text-yellow-100' 
                 : isSelected
-                  ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/50'
-                  : 'bg-emerald-400/30 hover:bg-emerald-500 hover:text-white cursor-pointer text-emerald-900 dark:text-emerald-100';
+                  ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/50'
+                  : 'bg-emerald-400/30 hover:bg-blue-500 hover:text-white cursor-pointer text-emerald-900 dark:text-emerald-100';
 
             return (
               <div 
                 key={i} 
                 onClick={() => {
-                   // Allow selecting a day even if it has bookings (esp for Football pitch where only hours are blocked)
-                   // But if it's a full day venue and 'booked', maybe warn or disable? 
-                   // For now, let's allow selection so user can try specific times or see error.
+                   // Allow selecting a day even if it has bookings
                    setFormData(prev => ({ ...prev, date: dateStr }));
                 }}
                 className={`aspect-square rounded-lg flex flex-col items-center justify-center text-xs transition-all duration-300 ${color}`}
@@ -336,7 +388,7 @@ const Booking: React.FC = () => {
     <div className="pt-28 pb-20 px-4 min-h-screen">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-700 to-teal-500 dark:from-emerald-300 dark:to-white mb-4">
+          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-emerald-600 to-teal-500 dark:from-emerald-300 dark:to-white mb-4">
             Book Your Experience
           </h1>
           <p className="text-gray-600 dark:text-gray-300">Seamless booking for your perfect event or game.</p>
@@ -355,9 +407,11 @@ const Booking: React.FC = () => {
             <p className="text-gray-600 dark:text-gray-300 mb-8 max-w-md mx-auto">
               Your booking for <strong>{formData.venue}</strong> has been received. <br/>
               Booking Code: <span className="font-mono font-bold text-emerald-500">{bookingCode}</span><br/>
-              A confirmation email has been sent to {formData.email}.
+              A confirmation email has been sent to {formData.email} from bookings@jkpalmandgarden.com.
             </p>
-            <GlassButton onClick={() => window.location.href = '/'} variant="secondary">Back to Home</GlassButton>
+            <div className="flex justify-center">
+              <GlassButton onClick={() => navigate('/')} variant="secondary">Back to Home</GlassButton>
+            </div>
           </GlassCard>
         ) : (
           <div className="grid md:grid-cols-3 gap-8">
@@ -403,7 +457,7 @@ const Booking: React.FC = () => {
                             onClick={() => setFormData(prev => ({ ...prev, venue: v.type, endDate: '', time: '' }))}
                             className={`cursor-pointer p-4 rounded-xl border transition-all ${
                               formData.venue === v.type 
-                              ? 'bg-emerald-500 text-white border-emerald-600 shadow-lg scale-105' 
+                              ? 'bg-gradient-to-r from-blue-500 to-emerald-500 text-white border-blue-600 shadow-lg scale-105' 
                               : 'bg-white/40 dark:bg-black/20 border-gray-300 dark:border-gray-700 hover:bg-white/60'
                             }`}
                           >

@@ -11,7 +11,8 @@ const AdminPanel: React.FC = () => {
   const [password, setPassword] = useState('');
   const [activeTab, setActiveTab] = useState<'bookings' | 'features' | 'gallery'>('bookings');
   
-  const [dbBookings, setDbBookings] = useState<BookingRecord[]>([]);
+  // Using any[] to accommodate the extra 'row_id' property mapping without changing global types
+  const [dbBookings, setDbBookings] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const loginRef = useRef<HTMLDivElement>(null);
 
@@ -40,11 +41,12 @@ const AdminPanel: React.FC = () => {
 
       const mappedData = data ? data.map((b: any) => ({
         ...b,
-        id: b.booking_code,
+        id: b.booking_code || b.id, // Display ID (Booking Code)
+        row_id: b.id, // Actual Database Primary Key
         venue: b.venue,
-        date: new Date(b.start_time).toLocaleDateString(),
-        time: new Date(b.start_time).toLocaleTimeString(),
-        totalPrice: parseFloat(b.price)
+        date: b.start_time ? new Date(b.start_time).toLocaleDateString() : 'N/A',
+        time: b.start_time ? new Date(b.start_time).toLocaleTimeString() : 'N/A',
+        totalPrice: b.price ? parseFloat(b.price) : 0
       })) : [];
       
       setDbBookings(mappedData);
@@ -58,18 +60,50 @@ const AdminPanel: React.FC = () => {
     }
   };
 
-  const handleUpdateStatus = async (bookingCode: string, status: 'Approved' | 'Rejected') => {
+  const handleUpdateStatus = async (rowId: any, status: 'Approved' | 'Rejected') => {
     try {
+      // Use Primary Key for updates
       const { error } = await supabase
         .from('bookings')
         .update({ status: status })
-        .eq('booking_code', bookingCode);
+        .eq('id', rowId);
 
       if (error) throw error;
 
       fetchBookings(); // Refresh list
     } catch (e: any) {
-      alert("Failed to update: " + e.message);
+      console.error("Update failed:", e);
+      alert("Failed to update status: " + (e.message || JSON.stringify(e)));
+    }
+  };
+
+  const handleDeleteBooking = async (rowId: any, displayId: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete booking ${displayId}?`)) return;
+
+    try {
+      console.log("Deleting booking row:", rowId);
+      
+      // Use exact count to detect RLS silent failures
+      const { error, count } = await supabase
+        .from('bookings')
+        .delete({ count: 'exact' })
+        .eq('id', rowId);
+
+      if (error) throw error;
+      
+      // If no rows were deleted, it's likely an RLS permission issue
+      if (count === 0) {
+        alert("Request sent, but no records were deleted.\n\nPossible Cause: Row Level Security (RLS) policies on Supabase are preventing deletion.\n\nSolution: Go to Supabase Dashboard > Table Editor > 'bookings' > Policies, and ensure the 'anon' or 'public' role has DELETE permissions.");
+        return;
+      }
+      
+      // Update local state to remove the deleted item
+      setDbBookings(prev => prev.filter(b => b.row_id !== rowId));
+      
+    } catch (e: any) {
+      console.error("Delete failed:", e);
+      const msg = e.message || JSON.stringify(e);
+      alert(`Failed to delete: ${msg}`);
     }
   };
 
@@ -181,7 +215,7 @@ const AdminPanel: React.FC = () => {
                       </tr>
                     ) : (
                       dbBookings.map(booking => (
-                        <tr key={booking.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-white/10">
+                        <tr key={booking.row_id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-white/10">
                           <td className="p-4 font-mono text-xs">{booking.id}</td>
                           <td className="p-4">
                             <div className="font-bold">{booking.name}</div>
@@ -190,7 +224,7 @@ const AdminPanel: React.FC = () => {
                           </td>
                           <td className="p-4">{booking.venue}</td>
                           <td className="p-4">
-                            <div>{new Date(booking.date).toDateString()}</div>
+                            <div>{booking.date}</div>
                             <div className="text-xs text-emerald-500">{booking.time}</div>
                           </td>
                           <td className="p-4 font-bold">₦{booking.totalPrice?.toLocaleString()}</td>
@@ -207,14 +241,14 @@ const AdminPanel: React.FC = () => {
                             {booking.status === 'Pending' && (
                               <>
                                 <button 
-                                  onClick={() => handleUpdateStatus(booking.id, 'Approved')}
+                                  onClick={() => handleUpdateStatus(booking.row_id, 'Approved')}
                                   title="Approve"
                                   className="p-2 bg-green-500/20 text-green-600 rounded-lg hover:bg-green-500 hover:text-white transition-colors"
                                 >
                                   <Check size={18} />
                                 </button>
                                 <button 
-                                  onClick={() => handleUpdateStatus(booking.id, 'Rejected')}
+                                  onClick={() => handleUpdateStatus(booking.row_id, 'Rejected')}
                                   title="Reject"
                                   className="p-2 bg-red-500/20 text-red-600 rounded-lg hover:bg-red-500 hover:text-white transition-colors"
                                 >
@@ -222,6 +256,13 @@ const AdminPanel: React.FC = () => {
                                 </button>
                               </>
                             )}
+                            <button 
+                              onClick={() => handleDeleteBooking(booking.row_id, booking.id)}
+                              title="Delete Booking"
+                              className="p-2 bg-gray-500/10 text-gray-500 rounded-lg hover:bg-red-500 hover:text-white transition-colors"
+                            >
+                              <Trash2 size={18} />
+                            </button>
                           </td>
                         </tr>
                       ))
