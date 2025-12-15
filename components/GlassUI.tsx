@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, HTMLMotionProps } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 interface GlassCardProps {
   children: React.ReactNode;
@@ -23,7 +23,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({ children, className = '', 
   );
 };
 
-interface GlassButtonProps extends HTMLMotionProps<"button"> {
+interface GlassButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary';
   children: React.ReactNode;
 }
@@ -39,7 +39,7 @@ export const GlassButton: React.FC<GlassButtonProps> = ({ variant = 'primary', c
     <motion.button
       whileTap={{ scale: 0.95 }}
       className={`${baseStyle} ${variants[variant]} ${className}`}
-      {...props}
+      {...(props as any)}
     >
       {children}
     </motion.button>
