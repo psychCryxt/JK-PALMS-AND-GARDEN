@@ -96,7 +96,7 @@ const Home: React.FC = () => {
             <div className="relative w-full h-[600px]">
               <div className="absolute inset-0 bg-emerald-500/20 blur-3xl rounded-full"></div>
               <img 
-                src="https://jkpalmandgarden.com/img/captured3.jpg" 
+                src="./images/captured3.jpg" 
                 alt="Nature" 
                 className="rounded-3xl shadow-2xl object-cover w-full h-full border-4 border-white/30 transform hover:scale-105 transition-duration-500"
               />
