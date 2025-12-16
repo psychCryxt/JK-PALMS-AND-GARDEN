@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GlassCard, GlassButton } from './GlassUI';
 import { useData } from '../context/DataContext';
-import { Lock, LogOut, Check, X, Edit2, Trash2, Image as ImageIcon, RefreshCw, Loader2, Upload, Plus, Citrus } from 'lucide-react';
-import { BookingRecord } from '../types';
+import { Lock, LogOut, Check, X, Edit2, Trash2, Image as ImageIcon, RefreshCw, Loader2, Upload, Plus, Citrus, Calendar, Save } from 'lucide-react';
+import { BookingRecord, EventItem } from '../types';
 import { supabase } from '../lib/supabase';
 
 const AdminPanel: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [activeTab, setActiveTab] = useState<'bookings' | 'features' | 'gallery' | 'content'>('bookings');
+  const [activeTab, setActiveTab] = useState<'bookings' | 'features' | 'gallery' | 'content' | 'events'>('bookings');
   
   // Using any[] to accommodate the extra 'row_id' property mapping without changing global types
   const [dbBookings, setDbBookings] = useState<any[]>([]);
@@ -18,15 +18,19 @@ const AdminPanel: React.FC = () => {
 
   // Upload State
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadTarget, setUploadTarget] = useState<{type: 'feature' | 'gallery' | 'hero' | 'testimonial' | 'logo', index?: number} | null>(null);
+  const [uploadTarget, setUploadTarget] = useState<{type: 'feature' | 'gallery' | 'hero' | 'testimonial' | 'logo' | 'event', index?: number} | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Local state for editing events
+  const [editingEventId, setEditingEventId] = useState<number | null>(null);
 
   const { 
     features, updateFeature, 
     galleryImages, updateGallery,
     heroImage, updateHeroImage,
     testimonials, updateTestimonials,
-    logo, updateLogo
+    logo, updateLogo,
+    events, updateEvents
   } = useData();
 
   // Scroll handling
@@ -81,8 +85,6 @@ const AdminPanel: React.FC = () => {
 
       if (error) throw error;
       
-      // Removed Email sending logic here as requested
-      
       fetchBookings();
     } catch (e: any) {
       console.error("Update failed:", e);
@@ -122,16 +124,16 @@ const AdminPanel: React.FC = () => {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === 'admin' && password === 'admin123') {
+    if (username === 'jkpalms' && password === 'jkpalmsandgarden2025') {
       setIsAuthenticated(true);
       fetchBookings();
     } else {
-      alert('Invalid Credentials (try admin/admin123)');
+      alert('Invalid Credentials');
     }
   };
 
   // --- Image Upload Logic ---
-  const triggerUpload = (type: 'feature' | 'gallery' | 'hero' | 'testimonial' | 'logo', index?: number) => {
+  const triggerUpload = (type: 'feature' | 'gallery' | 'hero' | 'testimonial' | 'logo' | 'event', index?: number) => {
     setUploadTarget({ type, index });
     fileInputRef.current?.click();
   };
@@ -179,6 +181,10 @@ const AdminPanel: React.FC = () => {
          const newTestimonials = [...testimonials];
          newTestimonials[uploadTarget.index] = { ...newTestimonials[uploadTarget.index], avatar: publicUrl };
          updateTestimonials(newTestimonials);
+      } else if (uploadTarget?.type === 'event' && typeof uploadTarget.index === 'number') {
+         const newEvents = [...events];
+         newEvents[uploadTarget.index] = { ...newEvents[uploadTarget.index], image: publicUrl };
+         updateEvents(newEvents);
       }
 
       alert("Image uploaded successfully!");
@@ -211,6 +217,30 @@ const AdminPanel: React.FC = () => {
     const newTestimonials = [...testimonials];
     newTestimonials[index] = { ...newTestimonials[index], [field]: value };
     updateTestimonials(newTestimonials);
+  };
+
+  // --- Event Management Logic ---
+  const handleAddEvent = () => {
+    const newEvent: EventItem = {
+      id: Date.now(),
+      title: 'New Event',
+      date: new Date().toISOString().split('T')[0],
+      description: 'Event description goes here...',
+      image: 'https://jkpalmandgarden.com/img/exp3.jpg' // Default placeholder
+    };
+    updateEvents([newEvent, ...events]);
+  };
+
+  const handleDeleteEvent = (id: number) => {
+    if (window.confirm("Are you sure you want to delete this event?")) {
+      updateEvents(events.filter(e => e.id !== id));
+    }
+  };
+
+  const handleEventChange = (index: number, field: keyof EventItem, value: string) => {
+    const newEvents = [...events];
+    newEvents[index] = { ...newEvents[index], [field]: value };
+    updateEvents(newEvents);
   };
 
   if (!isAuthenticated) {
@@ -270,7 +300,7 @@ const AdminPanel: React.FC = () => {
 
         {/* Tabs */}
         <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
-          {['bookings', 'features', 'gallery', 'content'].map(tab => (
+          {['bookings', 'features', 'gallery', 'content', 'events'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
@@ -581,6 +611,80 @@ const AdminPanel: React.FC = () => {
                 </div>
               </section>
             </div>
+          )}
+
+          {activeTab === 'events' && (
+             <div className="space-y-8">
+               <div className="flex justify-between items-center">
+                 <h3 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                    <Calendar className="text-emerald-500" /> Events & News
+                 </h3>
+                 <button 
+                   onClick={handleAddEvent}
+                   className="bg-emerald-500 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-600 shadow-lg"
+                 >
+                   <Plus size={20} /> Add New Event
+                 </button>
+               </div>
+
+               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                 {events.map((event, idx) => (
+                   <div key={event.id} className="bg-white/30 dark:bg-black/20 p-4 rounded-xl border border-white/10 flex flex-col h-full">
+                     <div className="relative h-48 rounded-lg overflow-hidden group mb-4 shrink-0">
+                       <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
+                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                         <button 
+                           className="bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-emerald-600"
+                           onClick={() => triggerUpload('event', idx)}
+                         >
+                           <Upload size={16} /> Change Image
+                         </button>
+                       </div>
+                     </div>
+                     
+                     <div className="space-y-3 flex-grow">
+                        <div className="flex gap-2">
+                           <div className="flex-grow">
+                             <label className="text-xs font-bold text-gray-500 uppercase">Title</label>
+                             <input 
+                               value={event.title}
+                               onChange={(e) => handleEventChange(idx, 'title', e.target.value)}
+                               className="w-full bg-transparent border-b border-gray-400 focus:border-emerald-500 outline-none py-1 font-bold text-gray-800 dark:text-white"
+                             />
+                           </div>
+                           <div className="w-1/3">
+                             <label className="text-xs font-bold text-gray-500 uppercase">Date</label>
+                             <input 
+                               type="date"
+                               value={event.date}
+                               onChange={(e) => handleEventChange(idx, 'date', e.target.value)}
+                               className="w-full bg-transparent border-b border-gray-400 focus:border-emerald-500 outline-none py-1 text-sm text-gray-600 dark:text-gray-300"
+                             />
+                           </div>
+                        </div>
+                        <div className="flex-grow">
+                           <label className="text-xs font-bold text-gray-500 uppercase">Description</label>
+                           <textarea 
+                             rows={4}
+                             value={event.description}
+                             onChange={(e) => handleEventChange(idx, 'description', e.target.value)}
+                             className="w-full bg-transparent border border-gray-400/30 rounded p-2 focus:border-emerald-500 outline-none text-sm text-gray-600 dark:text-gray-300 mt-1 resize-none h-24"
+                           />
+                        </div>
+                     </div>
+                     
+                     <div className="mt-4 pt-4 border-t border-white/10 flex justify-end">
+                       <button 
+                         onClick={() => handleDeleteEvent(event.id)}
+                         className="text-red-500 hover:text-red-700 p-2 hover:bg-red-100 rounded-lg transition-colors flex items-center gap-2 text-sm"
+                       >
+                         <Trash2 size={16} /> Delete Event
+                       </button>
+                     </div>
+                   </div>
+                 ))}
+               </div>
+             </div>
           )}
         </GlassCard>
       </div>

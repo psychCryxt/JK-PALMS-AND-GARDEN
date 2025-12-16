@@ -1,4 +1,4 @@
-import { ServiceItem, Testimonial, FeatureItem } from './types';
+import { ServiceItem, Testimonial, FeatureItem, EventItem } from './types';
 
 export const HERO_TITLE = "Adventure Blooms, Laughter Echoes";
 export const HERO_SUBTITLE = "Escape the hustle. Embrace nature. Create memories in our lush oasis.";
@@ -43,6 +43,30 @@ export const INITIAL_SERVICES: ServiceItem[] = [
   { id: 4, title: "Play Ground", description: "Safe and fun space for kids to run, climb, and explore.", icon: "smile" },
   { id: 5, title: "Event Hosting", description: "Full-service hosting for weddings, birthdays, and corporate retreats.", icon: "party" },
   { id: 6, title: "Garden Parties", description: "Exclusive access to our gardens for intimate outdoor celebrations.", icon: "tree" }
+];
+
+export const INITIAL_EVENTS: EventItem[] = [
+  {
+    id: 1,
+    title: "Summer Football Tournament",
+    date: "2024-06-15",
+    description: "Join us for the biggest local 5-a-side tournament. Great prizes to be won!",
+    image: "https://jkpalmandgarden.com/img/WhatsApp%20Image%202024-10-03%20at%2011.32.29_c5f4445a.jpg"
+  },
+  {
+    id: 2,
+    title: "Live Jazz Night",
+    date: "2024-05-20",
+    description: "Experience smooth jazz under the stars in our Courtyard. Cocktails and dinner available.",
+    image: "https://jkpalmandgarden.com/img/exp3.jpg"
+  },
+  {
+    id: 3,
+    title: "Family Fun Day",
+    date: "2024-05-01",
+    description: "Face painting, bouncy castles, and discount entry for the Kids Playground.",
+    image: "https://jkpalmandgarden.com/img/j10.jpg"
+  }
 ];
 
 export const INITIAL_GALLERY_IMAGES = [

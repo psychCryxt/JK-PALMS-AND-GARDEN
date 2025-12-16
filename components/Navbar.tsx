@@ -17,6 +17,7 @@ const Navbar: React.FC<NavbarProps> = ({ darkMode, toggleDarkMode }) => {
     { name: 'Home', path: '/' },
     { name: 'About', path: '/#about' },
     { name: 'Services', path: '/#services' },
+    { name: 'Events', path: '/#events' },
     { name: 'Contact', path: '/#contact' },
     { name: 'Book Now', path: '/booking', isCta: true },
   ];

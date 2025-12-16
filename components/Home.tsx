@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
-import { ArrowRight, Utensils, Lock, Smile, Home as HomeIcon, Clock, PartyPopper, Trees, X, ChevronUp, Instagram } from 'lucide-react';
+import { ArrowRight, Utensils, Lock, Smile, Home as HomeIcon, Clock, PartyPopper, Trees, X, ChevronUp, Instagram, Calendar, ChevronDown } from 'lucide-react';
 import { HERO_TITLE, HERO_SUBTITLE } from '../constants';
 import { GlassCard, GlassButton } from './GlassUI';
 import { useData } from '../context/DataContext';
@@ -10,9 +10,10 @@ const Home: React.FC = () => {
   const { hash } = useLocation();
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [visibleEvents, setVisibleEvents] = useState(3);
   
   // Use Data from Context
-  const { features, services, galleryImages, heroImage, testimonials } = useData();
+  const { features, services, galleryImages, heroImage, testimonials, events } = useData();
 
   // Handle Hash Scrolling
   useEffect(() => {
@@ -43,6 +44,10 @@ const Home: React.FC = () => {
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleLoadMoreEvents = () => {
+    setVisibleEvents(prev => prev + 3);
   };
 
   return (
@@ -160,7 +165,7 @@ const Home: React.FC = () => {
       <section id="services" className="py-24 px-4 bg-white/50 dark:bg-white/5 backdrop-blur-md shadow-sm border-y border-white/30 dark:border-white/10">
         <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
           <div>
-            <h2 className="text-4xl font-bold mb-6 text-gray-800 dark:text-white">Our Services & Events</h2>
+            <h2 className="text-4xl font-bold mb-6 text-gray-800 dark:text-white">Our Services</h2>
             <p className="text-gray-600 dark:text-gray-300 mb-8">
               From guided nature walks to event hosting, we offer a variety of services designed to enhance your experience. We host parties, corporate events, and weddings in our beautiful Courtyard and Palm Garden.
             </p>
@@ -215,6 +220,61 @@ const Home: React.FC = () => {
              <div className="absolute -top-10 -right-10 w-40 h-40 bg-purple-500/30 rounded-full blur-3xl -z-10"></div>
              <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-teal-500/30 rounded-full blur-3xl -z-10"></div>
           </div>
+        </div>
+      </section>
+
+      {/* Events and News Section */}
+      <section id="events" className="py-24 px-4 bg-emerald-50/30 dark:bg-black/10">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold mb-4 text-gray-800 dark:text-white">Events & News</h2>
+            <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+              Stay updated with our latest gatherings, tournaments, and special occasions.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {events.slice(0, visibleEvents).map((event) => (
+              <GlassCard key={event.id} className="group overflow-hidden flex flex-col h-full hover:shadow-2xl transition-all duration-300">
+                <div className="h-56 -mx-6 -mt-6 mb-6 overflow-hidden relative">
+                  <img 
+                    src={event.image} 
+                    alt={event.title} 
+                    className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
+                  />
+                  <div className="absolute top-4 left-4 bg-white/90 dark:bg-black/80 backdrop-blur text-emerald-600 dark:text-emerald-400 px-3 py-1 rounded-lg text-sm font-bold shadow-sm">
+                     {event.date}
+                  </div>
+                </div>
+                
+                <h3 className="text-xl font-bold mb-3 text-gray-800 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                  {event.title}
+                </h3>
+                
+                <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-4 flex-grow">
+                  {event.description}
+                </p>
+                
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-700 mt-auto">
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+                    <Calendar size={14} /> Upcoming Event
+                  </span>
+                </div>
+              </GlassCard>
+            ))}
+          </div>
+
+          {/* Load More Button */}
+          {visibleEvents < events.length && (
+            <div className="mt-12 text-center">
+              <button 
+                onClick={handleLoadMoreEvents}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white dark:bg-gray-800 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-bold hover:bg-emerald-50 dark:hover:bg-gray-700 transition-colors shadow-lg"
+              >
+                View More Events <ChevronDown size={20} />
+              </button>
+            </div>
+          )}
         </div>
       </section>
 

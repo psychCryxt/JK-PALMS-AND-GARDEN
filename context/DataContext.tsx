@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { BookingRecord, FeatureItem, ServiceItem, Testimonial } from '../types';
-import { INITIAL_FEATURES, INITIAL_SERVICES, INITIAL_GALLERY_IMAGES, TESTIMONIALS } from '../constants';
+import { BookingRecord, FeatureItem, ServiceItem, Testimonial, EventItem } from '../types';
+import { INITIAL_FEATURES, INITIAL_SERVICES, INITIAL_GALLERY_IMAGES, TESTIMONIALS, INITIAL_EVENTS } from '../constants';
 
 interface DataContextType {
   features: FeatureItem[];
@@ -10,6 +10,7 @@ interface DataContextType {
   heroImage: string;
   testimonials: Testimonial[];
   logo: string;
+  events: EventItem[];
   addBooking: (booking: BookingRecord) => void;
   updateBookingStatus: (id: string, status: 'Pending' | 'Approved' | 'Rejected') => void;
   updateFeature: (index: number, feature: FeatureItem) => void;
@@ -18,6 +19,7 @@ interface DataContextType {
   updateHeroImage: (url: string) => void;
   updateTestimonials: (testimonials: Testimonial[]) => void;
   updateLogo: (url: string) => void;
+  updateEvents: (events: EventItem[]) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -57,6 +59,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return localStorage.getItem('jk_logo') || "";
   });
 
+  const [events, setEvents] = useState<EventItem[]>(() => {
+    const saved = localStorage.getItem('jk_events');
+    return saved ? JSON.parse(saved) : INITIAL_EVENTS;
+  });
+
   // Persist to LocalStorage whenever state changes
   useEffect(() => localStorage.setItem('jk_features', JSON.stringify(features)), [features]);
   useEffect(() => localStorage.setItem('jk_services', JSON.stringify(services)), [services]);
@@ -65,6 +72,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => localStorage.setItem('jk_hero_image', heroImage), [heroImage]);
   useEffect(() => localStorage.setItem('jk_testimonials', JSON.stringify(testimonials)), [testimonials]);
   useEffect(() => localStorage.setItem('jk_logo', logo), [logo]);
+  useEffect(() => localStorage.setItem('jk_events', JSON.stringify(events)), [events]);
 
   // Update Favicon dynamically when logo changes
   useEffect(() => {
@@ -115,6 +123,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLogo(url);
   };
 
+  const updateEvents = (newEvents: EventItem[]) => {
+    setEvents(newEvents);
+  };
+
   return (
     <DataContext.Provider value={{
       features,
@@ -124,6 +136,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       heroImage,
       testimonials,
       logo,
+      events,
       addBooking,
       updateBookingStatus,
       updateFeature,
@@ -131,7 +144,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateGallery,
       updateHeroImage,
       updateTestimonials,
-      updateLogo
+      updateLogo,
+      updateEvents
     }}>
       {children}
     </DataContext.Provider>
