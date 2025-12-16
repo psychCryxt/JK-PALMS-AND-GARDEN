@@ -49,9 +49,9 @@ const Footer: React.FC = () => {
             <h4 className="text-lg font-semibold mb-6 border-b border-emerald-500/30 pb-2 inline-block">Quick Links</h4>
             <ul className="space-y-3 text-sm">
               <li><Link to="/" className="hover:text-emerald-500 hover:pl-2 transition-all block">→ Home</Link></li>
-              <li><a href="/#about" className="hover:text-emerald-500 hover:pl-2 transition-all block">→ About Us</a></li>
-              <li><a href="/#services" className="hover:text-emerald-500 hover:pl-2 transition-all block">→ Services</a></li>
-              <li><a href="/#contact" className="hover:text-emerald-500 hover:pl-2 transition-all block">→ Contact Us</a></li>
+              <li><Link to="/#about" className="hover:text-emerald-500 hover:pl-2 transition-all block">→ About Us</Link></li>
+              <li><Link to="/#services" className="hover:text-emerald-500 hover:pl-2 transition-all block">→ Services</Link></li>
+              <li><Link to="/#contact" className="hover:text-emerald-500 hover:pl-2 transition-all block">→ Contact Us</Link></li>
               <li><Link to="/admin" className="hover:text-emerald-500 hover:pl-2 transition-all block font-bold text-emerald-600 dark:text-emerald-400">→ Admin Login</Link></li>
             </ul>
           </div>
