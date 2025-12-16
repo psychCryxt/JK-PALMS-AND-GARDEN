@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GlassCard, GlassButton } from './GlassUI';
 import { useData } from '../context/DataContext';
-import { Lock, LogOut, Check, X, Edit2, Trash2, Image as ImageIcon, RefreshCw, Loader2, Upload, Plus, Citrus, Calendar, Save } from 'lucide-react';
+import { Lock, LogOut, Check, X, Edit2, Trash2, Image as ImageIcon, RefreshCw, Loader2, Upload, Plus, Citrus, Calendar, Cloud, CloudOff, Save, AlertTriangle } from 'lucide-react';
 import { BookingRecord, EventItem } from '../types';
 import { supabase } from '../lib/supabase';
 
@@ -21,16 +21,15 @@ const AdminPanel: React.FC = () => {
   const [uploadTarget, setUploadTarget] = useState<{type: 'feature' | 'gallery' | 'hero' | 'testimonial' | 'logo' | 'event', index?: number} | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Local state for editing events
-  const [editingEventId, setEditingEventId] = useState<number | null>(null);
-
   const { 
     features, updateFeature, 
     galleryImages, updateGallery,
     heroImage, updateHeroImage,
     testimonials, updateTestimonials,
     logo, updateLogo,
-    events, updateEvents
+    events, updateEvents,
+    syncStatus,
+    syncError 
   } = useData();
 
   // Scroll handling
@@ -96,8 +95,6 @@ const AdminPanel: React.FC = () => {
     if (!window.confirm(`Are you sure you want to permanently delete booking ${displayId}?`)) return;
 
     try {
-      console.log("Deleting booking row:", rowId);
-      
       // Use exact count to detect RLS silent failures
       const { error, count } = await supabase
         .from('bookings')
@@ -187,7 +184,7 @@ const AdminPanel: React.FC = () => {
          updateEvents(newEvents);
       }
 
-      alert("Image uploaded successfully!");
+      alert("Image uploaded successfully! Saving to cloud...");
     } catch (error: any) {
       console.error('Upload failed:', error);
       
@@ -275,6 +272,24 @@ const AdminPanel: React.FC = () => {
     );
   }
 
+  // Helper for sync status Badge
+  const getSyncStatusBadge = () => {
+    if (syncStatus === 'saving') {
+      return <div className="flex items-center gap-2 text-yellow-600 bg-yellow-100 px-3 py-1 rounded-full text-sm font-bold"><Loader2 className="animate-spin" size={14}/> Saving...</div>;
+    }
+    if (syncStatus === 'error') {
+      return (
+        <button 
+          onClick={() => alert(`Database Error Details:\n\n${syncError || 'Check console for details.'}\n\nHint: Make sure the table 'site_content' has columns 'key' (text) and 'content' (jsonb).`)}
+          className="flex items-center gap-2 text-red-600 bg-red-100 px-3 py-1 rounded-full text-sm font-bold hover:bg-red-200 transition-colors"
+        >
+          <CloudOff size={14}/> Sync Error (Click to fix)
+        </button>
+      );
+    }
+    return <div className="flex items-center gap-2 text-emerald-600 bg-emerald-100 px-3 py-1 rounded-full text-sm font-bold"><Cloud size={14}/> All Changes Saved</div>;
+  };
+
   return (
     <div className="min-h-screen pt-24 px-4 pb-10">
       <div className="max-w-7xl mx-auto">
@@ -288,8 +303,11 @@ const AdminPanel: React.FC = () => {
         />
 
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Admin Dashboard</h1>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <div className="flex flex-col gap-1">
+             <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Admin Dashboard</h1>
+             {getSyncStatusBadge()}
+          </div>
           <button 
             onClick={() => setIsAuthenticated(false)}
             className="flex items-center gap-2 text-red-500 hover:text-red-600 font-medium"
@@ -430,14 +448,17 @@ const AdminPanel: React.FC = () => {
                        </button>
                      </div>
                    </div>
+                   {/* Switched to defaultValue + onBlur to prevent excessive DB writes while typing */}
                    <input 
-                     value={feature.title} 
-                     onChange={(e) => updateFeature(idx, { ...feature, title: e.target.value })}
+                     defaultValue={feature.title} 
+                     onBlur={(e) => updateFeature(idx, { ...feature, title: e.target.value })}
+                     key={`title-${idx}-${feature.title}`} // Forces re-render if updated externally
                      className="w-full bg-transparent font-bold text-lg mb-2 border-b border-transparent focus:border-emerald-500 outline-none text-gray-800 dark:text-white"
                    />
                    <textarea 
-                     value={feature.description}
-                     onChange={(e) => updateFeature(idx, { ...feature, description: e.target.value })}
+                     defaultValue={feature.description}
+                     onBlur={(e) => updateFeature(idx, { ...feature, description: e.target.value })}
+                     key={`desc-${idx}-${feature.description}`} // Forces re-render if updated externally
                      className="w-full bg-transparent text-sm text-gray-600 dark:text-gray-300 resize-none h-20 border border-transparent focus:border-emerald-500 rounded p-1 outline-none"
                    />
                 </div>
@@ -582,8 +603,9 @@ const AdminPanel: React.FC = () => {
                            <label className="text-xs font-bold text-gray-500 uppercase">Name</label>
                            <input 
                              type="text" 
-                             value={testimonial.name}
-                             onChange={(e) => handleTestimonialChange(idx, 'name', e.target.value)}
+                             defaultValue={testimonial.name}
+                             onBlur={(e) => handleTestimonialChange(idx, 'name', e.target.value)}
+                             key={`t-name-${idx}-${testimonial.name}`}
                              className="w-full bg-transparent border-b border-gray-400 focus:border-emerald-500 outline-none py-1 font-bold text-gray-800 dark:text-white"
                            />
                          </div>
@@ -591,8 +613,9 @@ const AdminPanel: React.FC = () => {
                            <label className="text-xs font-bold text-gray-500 uppercase">Role</label>
                            <input 
                              type="text" 
-                             value={testimonial.role}
-                             onChange={(e) => handleTestimonialChange(idx, 'role', e.target.value)}
+                             defaultValue={testimonial.role}
+                             onBlur={(e) => handleTestimonialChange(idx, 'role', e.target.value)}
+                             key={`t-role-${idx}-${testimonial.role}`}
                              className="w-full bg-transparent border-b border-gray-400 focus:border-emerald-500 outline-none py-1 text-sm text-emerald-600"
                            />
                          </div>
@@ -600,8 +623,9 @@ const AdminPanel: React.FC = () => {
                            <label className="text-xs font-bold text-gray-500 uppercase">Comment</label>
                            <textarea 
                              rows={3}
-                             value={testimonial.comment}
-                             onChange={(e) => handleTestimonialChange(idx, 'comment', e.target.value)}
+                             defaultValue={testimonial.comment}
+                             onBlur={(e) => handleTestimonialChange(idx, 'comment', e.target.value)}
+                             key={`t-comment-${idx}-${testimonial.comment}`}
                              className="w-full bg-transparent border border-gray-400/30 rounded p-2 focus:border-emerald-500 outline-none text-sm text-gray-600 dark:text-gray-300 mt-1 resize-none"
                            />
                          </div>
@@ -647,8 +671,9 @@ const AdminPanel: React.FC = () => {
                            <div className="flex-grow">
                              <label className="text-xs font-bold text-gray-500 uppercase">Title</label>
                              <input 
-                               value={event.title}
-                               onChange={(e) => handleEventChange(idx, 'title', e.target.value)}
+                               defaultValue={event.title}
+                               onBlur={(e) => handleEventChange(idx, 'title', e.target.value)}
+                               key={`e-title-${idx}-${event.title}`}
                                className="w-full bg-transparent border-b border-gray-400 focus:border-emerald-500 outline-none py-1 font-bold text-gray-800 dark:text-white"
                              />
                            </div>
@@ -656,8 +681,9 @@ const AdminPanel: React.FC = () => {
                              <label className="text-xs font-bold text-gray-500 uppercase">Date</label>
                              <input 
                                type="date"
-                               value={event.date}
-                               onChange={(e) => handleEventChange(idx, 'date', e.target.value)}
+                               defaultValue={event.date}
+                               onBlur={(e) => handleEventChange(idx, 'date', e.target.value)}
+                               key={`e-date-${idx}-${event.date}`}
                                className="w-full bg-transparent border-b border-gray-400 focus:border-emerald-500 outline-none py-1 text-sm text-gray-600 dark:text-gray-300"
                              />
                            </div>
@@ -666,8 +692,9 @@ const AdminPanel: React.FC = () => {
                            <label className="text-xs font-bold text-gray-500 uppercase">Description</label>
                            <textarea 
                              rows={4}
-                             value={event.description}
-                             onChange={(e) => handleEventChange(idx, 'description', e.target.value)}
+                             defaultValue={event.description}
+                             onBlur={(e) => handleEventChange(idx, 'description', e.target.value)}
+                             key={`e-desc-${idx}-${event.description}`}
                              className="w-full bg-transparent border border-gray-400/30 rounded p-2 focus:border-emerald-500 outline-none text-sm text-gray-600 dark:text-gray-300 mt-1 resize-none h-24"
                            />
                         </div>

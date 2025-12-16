@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { BookingRecord, FeatureItem, ServiceItem, Testimonial, EventItem } from '../types';
 import { INITIAL_FEATURES, INITIAL_SERVICES, INITIAL_GALLERY_IMAGES, TESTIMONIALS, INITIAL_EVENTS } from '../constants';
 import { supabase } from '../lib/supabase';
@@ -12,6 +12,8 @@ interface DataContextType {
   testimonials: Testimonial[];
   logo: string;
   events: EventItem[];
+  syncStatus: 'synced' | 'saving' | 'error';
+  syncError: string | null;
   addBooking: (booking: BookingRecord) => void;
   updateBookingStatus: (id: string, status: 'Pending' | 'Approved' | 'Rejected') => void;
   updateFeature: (index: number, feature: FeatureItem) => void;
@@ -66,88 +68,140 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return saved ? JSON.parse(saved) : INITIAL_EVENTS;
   });
 
-  // --- Real-time Sync with Supabase ---
-  useEffect(() => {
-    const fetchGlobalContent = async () => {
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'saving' | 'error'>('synced');
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  // Ref to store debounce timers
+  const saveTimeouts = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  // Persist to LocalStorage (Immediate) AND Supabase (Debounced or Immediate)
+  const persist = async (key: string, value: any, immediate = false) => {
+    // 1. Save to LocalStorage immediately
+    localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+    setSyncStatus('saving');
+    setSyncError(null);
+
+    const saveToDb = async () => {
       try {
-        const { data, error } = await supabase.from('site_content').select('key, value');
-        
-        if (data) {
-          data.forEach(item => {
-            const val = item.value;
-            // Update state and local storage backup
-            switch(item.key) {
-              case 'jk_features': 
-                setFeatures(val); 
-                localStorage.setItem('jk_features', JSON.stringify(val));
-                break;
-              case 'jk_services': 
-                setServices(val); 
-                localStorage.setItem('jk_services', JSON.stringify(val));
-                break;
-              case 'jk_gallery_images': 
-                setGalleryImages(val); 
-                localStorage.setItem('jk_gallery_images', JSON.stringify(val));
-                break;
-              case 'jk_hero_image': 
-                setHeroImage(val); 
-                localStorage.setItem('jk_hero_image', val);
-                break;
-              case 'jk_testimonials': 
-                setTestimonials(val); 
-                localStorage.setItem('jk_testimonials', JSON.stringify(val));
-                break;
-              case 'jk_logo': 
-                setLogo(val); 
-                localStorage.setItem('jk_logo', val);
-                break;
-              case 'jk_events': 
-                setEvents(val); 
-                localStorage.setItem('jk_events', JSON.stringify(val));
-                break;
-            }
-          });
-        }
-      } catch (err) {
-        console.error("Error loading site content:", err);
+        // Use 'content' column instead of 'value'
+        const { error } = await supabase.from('site_content').upsert({ key, content: value });
+        if (error) throw error;
+        setSyncStatus('synced');
+      } catch (err: any) {
+        console.error(`Failed to sync ${key} to cloud:`, err);
+        setSyncStatus('error');
+        setSyncError(err.message || "Unknown database error");
       }
     };
 
+    // Clear existing timeout for this key
+    if (saveTimeouts.current[key]) {
+      clearTimeout(saveTimeouts.current[key]);
+      delete saveTimeouts.current[key];
+    }
+
+    if (immediate) {
+      await saveToDb();
+    } else {
+      saveTimeouts.current[key] = setTimeout(async () => {
+        await saveToDb();
+        delete saveTimeouts.current[key];
+      }, 1000); // 1 second debounce
+    }
+  };
+
+  // Helper to update state from DB data
+  const updateStateFromKey = useCallback((key: string, val: any) => {
+    if (!val) return;
+    switch(key) {
+      case 'jk_features': 
+        setFeatures(val); 
+        localStorage.setItem('jk_features', JSON.stringify(val));
+        break;
+      case 'jk_services': 
+        setServices(val); 
+        localStorage.setItem('jk_services', JSON.stringify(val));
+        break;
+      case 'jk_gallery_images': 
+        setGalleryImages(val); 
+        localStorage.setItem('jk_gallery_images', JSON.stringify(val));
+        break;
+      case 'jk_hero_image': 
+        setHeroImage(val); 
+        localStorage.setItem('jk_hero_image', val);
+        break;
+      case 'jk_testimonials': 
+        setTestimonials(val); 
+        localStorage.setItem('jk_testimonials', JSON.stringify(val));
+        break;
+      case 'jk_logo': 
+        setLogo(val); 
+        localStorage.setItem('jk_logo', val);
+        break;
+      case 'jk_events': 
+        setEvents(val); 
+        localStorage.setItem('jk_events', JSON.stringify(val));
+        break;
+    }
+  }, []);
+
+  const fetchGlobalContent = useCallback(async () => {
+    try {
+      // Use 'content' column instead of 'value'
+      const { data, error } = await supabase.from('site_content').select('key, content');
+      if (error) {
+        if (error.code !== 'PGRST116') {
+             console.warn("Sync warning:", error.message);
+             setSyncStatus('error');
+             setSyncError(error.message);
+        }
+        return;
+      }
+      
+      if (data) {
+        data.forEach(item => {
+          updateStateFromKey(item.key, item.content);
+        });
+        setSyncStatus('synced');
+        setSyncError(null);
+      }
+    } catch (err: any) {
+      console.error("Error loading site content:", err);
+      setSyncStatus('error');
+      setSyncError(err.message || "Network error");
+    }
+  }, [updateStateFromKey]);
+
+  // --- Real-time Sync & Polling ---
+  useEffect(() => {
+    // 1. Initial Fetch
     fetchGlobalContent();
 
-    // Subscribe to Realtime changes from other admins
+    // 2. Realtime Subscription
     const channel = supabase.channel('content_updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'site_content' }, (payload) => {
-         const { key, value } = payload.new as any;
-         if (!key) return;
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'site_content' }, async (payload) => {
+         const record = payload.new as any;
+         if (!record || !record.key) return;
 
-         if (key === 'jk_features') setFeatures(value);
-         else if (key === 'jk_services') setServices(value);
-         else if (key === 'jk_gallery_images') setGalleryImages(value);
-         else if (key === 'jk_hero_image') setHeroImage(value);
-         else if (key === 'jk_testimonials') setTestimonials(value);
-         else if (key === 'jk_logo') setLogo(value);
-         else if (key === 'jk_events') setEvents(value);
+         // Fetch fresh data to ensure we have the complete JSON object
+         // Use 'content' column
+         const { data } = await supabase.from('site_content').select('content').eq('key', record.key).single();
+         if (data) {
+            updateStateFromKey(record.key, data.content);
+         }
       })
       .subscribe();
 
+    // 3. Polling Fallback (Every 10 seconds)
+    const intervalId = setInterval(() => {
+        fetchGlobalContent();
+    }, 10000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(intervalId);
     };
-  }, []);
-
-  // Persist to LocalStorage (Backup) AND Supabase (Cloud)
-  const persist = async (key: string, value: any) => {
-    // 1. Save to LocalStorage (Fast, offline support)
-    localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
-
-    // 2. Save to Supabase (Global Sync)
-    try {
-      await supabase.from('site_content').upsert({ key, value });
-    } catch (err) {
-      console.error(`Failed to sync ${key} to cloud`, err);
-    }
-  };
+  }, [fetchGlobalContent, updateStateFromKey]);
 
   // Update Favicon dynamically when logo changes
   useEffect(() => {
@@ -184,7 +238,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newFeatures = [...features];
     newFeatures[index] = feature;
     setFeatures(newFeatures);
-    persist('jk_features', newFeatures);
+    // Use immediate=true if it contains an image URL (heuristic), otherwise debounce
+    persist('jk_features', newFeatures, feature.image.startsWith('http'));
   };
 
   const updateService = (index: number, service: ServiceItem) => {
@@ -196,12 +251,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateGallery = (images: string[]) => {
     setGalleryImages(images);
-    persist('jk_gallery_images', images);
+    persist('jk_gallery_images', images, true); // Images: Immediate Save
   };
 
   const updateHeroImage = (url: string) => {
     setHeroImage(url);
-    persist('jk_hero_image', url);
+    persist('jk_hero_image', url, true); // Images: Immediate Save
   };
 
   const updateTestimonials = (newTestimonials: Testimonial[]) => {
@@ -211,12 +266,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateLogo = (url: string) => {
     setLogo(url);
-    persist('jk_logo', url);
+    persist('jk_logo', url, true); // Images: Immediate Save
   };
 
   const updateEvents = (newEvents: EventItem[]) => {
     setEvents(newEvents);
-    persist('jk_events', newEvents);
+    persist('jk_events', newEvents, true); // Events often involve images: Immediate Save
   };
 
   return (
@@ -229,6 +284,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       testimonials,
       logo,
       events,
+      syncStatus,
+      syncError,
       addBooking,
       updateBookingStatus,
       updateFeature,
