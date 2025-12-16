@@ -8,7 +8,7 @@ import Footer from './components/Footer';
 import { DataProvider } from './context/DataContext';
 
 const App: React.FC = () => {
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
   const mouseOrbRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -22,9 +22,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (mouseOrbRef.current) {
-        // Simple follow with no delay for responsiveness, or use a small delay for smoothness.
-        // Using transform for performance.
-        // Centering the 600px orb: x - 300, y - 300
+        // Simple follow with no delay for responsiveness
         const x = e.clientX - 300;
         const y = e.clientY - 300;
         
@@ -48,16 +46,21 @@ const App: React.FC = () => {
             {/* Main Gradient */}
             <div className="absolute inset-0 gradient-bg opacity-30 dark:opacity-20"></div>
             
-            {/* Mouse Follower Orb */}
+            {/* Mouse Follower Orb - Uses Logo Green */}
             <div 
               ref={mouseOrbRef}
               className="absolute top-0 left-0 w-[600px] h-[600px] bg-emerald-500/30 dark:bg-emerald-400/20 rounded-full blur-[100px] opacity-60"
             ></div>
             
-            {/* Animated Orbs */}
-            <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-emerald-400/40 rounded-full blur-[100px] animate-pulse"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-teal-500/30 rounded-full blur-[120px]"></div>
-            <div className="absolute top-[40%] left-[60%] w-64 h-64 bg-yellow-200/20 dark:bg-purple-900/30 rounded-full blur-[80px]"></div>
+            {/* Animated Orbs - Updated to match Logo Colors */}
+            {/* Logo Green Orb */}
+            <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-emerald-500/40 rounded-full blur-[100px] animate-pulse"></div>
+            
+            {/* Logo Sky Blue Orb (representing background circle in logo) */}
+            <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-sky-400/30 rounded-full blur-[120px]"></div>
+            
+            {/* Light Accent Orb */}
+            <div className="absolute top-[40%] left-[60%] w-64 h-64 bg-emerald-200/20 dark:bg-emerald-900/30 rounded-full blur-[80px]"></div>
           </div>
 
           <div className="relative z-10 flex flex-col min-h-screen">

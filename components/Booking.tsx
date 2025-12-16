@@ -3,10 +3,10 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { GlassCard, GlassButton } from './GlassUI';
 import { BookingState, VenueType, BookingRecord } from '../types';
-import { Calendar, Clock, User, CheckCircle, AlertCircle, Loader2, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, User, CheckCircle, AlertCircle, Loader2, RefreshCw, ChevronLeft, ChevronRight, Download, Printer, TreePalm } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { supabase } from '../lib/supabase';
-import emailjs from '@emailjs/browser';
+import html2canvas from 'html2canvas';
 
 const VENUES: { type: VenueType; price: number; unit: string }[] = [
   { type: 'Football Pitch', price: 8000, unit: '/hour' },
@@ -14,10 +14,6 @@ const VENUES: { type: VenueType; price: number; unit: string }[] = [
   { type: 'Palm Garden', price: 100000, unit: '/day' },
   { type: 'Kids Playground', price: 200, unit: '/person' },
 ];
-
-const SERVICE_ID = 'service_c57rfmu';
-const TEMPLATE_ID = 'template_6jxnaaf';
-const PUBLIC_KEY = 'RXXbFYl19spWvwbwS';
 
 const Booking: React.FC = () => {
   const { addBooking } = useData();
@@ -30,16 +26,9 @@ const Booking: React.FC = () => {
   // Availability State
   const [existingBookings, setExistingBookings] = useState<any[]>([]);
   const [loadingAvailability, setLoadingAvailability] = useState(false);
-  const [calendarOffset, setCalendarOffset] = useState(0); // Days to offset calendar view
-
-  // Initialize EmailJS
-  useEffect(() => {
-    try {
-      emailjs.init(PUBLIC_KEY);
-    } catch (e) {
-      console.warn("EmailJS init warning:", e);
-    }
-  }, []);
+  
+  // Calendar View State
+  const [viewDate, setViewDate] = useState(new Date());
 
   // Helper to get local YYYY-MM-DD string
   const getLocalDateString = (date: Date) => {
@@ -233,41 +222,7 @@ const Booking: React.FC = () => {
         throw new Error(error.message || 'Database insert failed.');
       }
 
-      // 5. Send Confirmation Email via EmailJS
-      try {
-        console.log("Preparing to send email to:", formData.email);
-        const templateParams = {
-          to_name: formData.name,
-          to_email: formData.email,
-          booking_code: code,
-          venue: formData.venue,
-          date: formData.date,
-          time: formData.venue === 'Football Pitch' ? formData.time : 'Full Day',
-          total_price: totalPrice.toLocaleString(),
-          message: formData.message || 'No additional notes',
-          reply_to: 'bookings@jkpalmandgarden.com'
-        };
-
-        const response = await emailjs.send(
-          SERVICE_ID,
-          TEMPLATE_ID,
-          templateParams,
-          PUBLIC_KEY
-        );
-        console.log("Confirmation email sent successfully!", response);
-
-      } catch (emailError: any) {
-        console.error("Failed to send confirmation email:", emailError);
-        // Improved Error Logging
-        if (emailError && emailError.text) {
-             console.error("EmailJS Error Text:", emailError.text);
-             // alert("Email Error: " + emailError.text); // Uncomment to see error in alert
-        } else {
-             console.error("EmailJS Error Details:", JSON.stringify(emailError));
-        }
-      }
-
-      // 6. Success State
+      // 5. Success State (No Email)
       setBookingCode(code);
       setStep(3);
       
@@ -291,60 +246,69 @@ const Booking: React.FC = () => {
     }
   };
 
-  // Dynamic Calendar Logic
-  const renderCalendarReal = () => {
-    // Generate 7 days based on offset
-    const days = [];
-    const today = new Date();
-    const startDate = new Date(today);
-    startDate.setDate(today.getDate() + calendarOffset);
-    
-    // Correct logic for calendar days
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(startDate);
-      d.setDate(startDate.getDate() + i);
-      days.push(d);
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDownload = async () => {
+    const element = document.getElementById('receipt-card');
+    if (element) {
+      try {
+        const canvas = await html2canvas(element, {
+          backgroundColor: '#ffffff',
+          scale: 2 // Higher resolution
+        });
+        const data = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.href = data;
+        link.download = `JK_Receipt_${bookingCode}.png`;
+        link.click();
+      } catch (error) {
+        console.error("Failed to generate image", error);
+        alert("Could not generate receipt image. Please try the Print option.");
+      }
     }
+  };
 
-    // Month Label
-    const monthLabel = startDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  // --- Calendar Navigation Helpers ---
+  const handlePrevMonth = () => {
+    setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
 
-    return (
-      <>
-        <div className="flex justify-between items-center mb-2 px-1">
-          <button 
-            type="button"
-            onClick={() => setCalendarOffset(prev => Math.max(0, prev - 7))}
-            disabled={calendarOffset === 0}
-            className={`p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors ${calendarOffset === 0 ? 'opacity-30 cursor-not-allowed' : ''}`}
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{monthLabel}</span>
-          <button 
-            type="button"
-            onClick={() => setCalendarOffset(prev => prev + 7)}
-            className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
+  const handleNextMonth = () => {
+    setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
 
-        <div className="grid grid-cols-7 gap-2 text-center mb-6">
-          {days.map((d, i) => (
-            <span key={`h-${i}`} className="text-[10px] font-bold text-gray-500 uppercase">
-              {d.toLocaleDateString('en-US', { weekday: 'narrow' })}
-            </span>
-          ))}
-          
-          {days.map((d, i) => {
-            // Check status for this day
-            const dateStr = getLocalDateString(d);
-            
-            let status = 'available';
-            
-            // Check availability
-            // Convert booking timestamps to local date strings for comparison
+  // --- Render Full Month Calendar ---
+  const renderCalendar = () => {
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDayOfWeek = new Date(year, month, 1).getDay(); // 0 = Sunday
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    const monthLabel = viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+    const days = [];
+    
+    // Add empty padding slots for start of month
+    for (let i = 0; i < firstDayOfWeek; i++) {
+        days.push(<div key={`pad-${i}`} className="aspect-square"></div>);
+    }
+    
+    // Generate days
+    for (let d = 1; d <= daysInMonth; d++) {
+        const currentDayDate = new Date(year, month, d);
+        const dateStr = getLocalDateString(currentDayDate);
+        
+        const isPast = currentDayDate < today;
+        let status = 'available';
+
+        if (isPast) {
+            status = 'disabled';
+        } else {
+             // Check existing bookings for this specific date
             const hasBooking = existingBookings.find(b => {
               const bookingDate = new Date(b.start_time);
               const bookingDateStr = getLocalDateString(bookingDate);
@@ -354,40 +318,88 @@ const Booking: React.FC = () => {
             if (hasBooking) {
               status = hasBooking.status === 'Approved' ? 'booked' : 'pending';
             }
-            
-            // Highlight selected day
-            const isSelected = formData.date === dateStr;
+        }
 
-            const color = status === 'booked' 
-              ? 'bg-red-400/50 text-red-900 dark:text-red-100' 
-              : status === 'pending' 
-                ? 'bg-yellow-400/50 text-yellow-900 dark:text-yellow-100' 
-                : isSelected
-                  ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/50'
-                  : 'bg-emerald-400/30 hover:bg-blue-500 hover:text-white cursor-pointer text-emerald-900 dark:text-emerald-100';
+        const isSelected = formData.date === dateStr;
+        
+        let colorClass = 'bg-emerald-400/20 hover:bg-emerald-500 hover:text-white text-emerald-900 dark:text-emerald-100 cursor-pointer';
+        
+        if (status === 'disabled') colorClass = 'opacity-30 cursor-not-allowed bg-gray-200 dark:bg-gray-800 text-gray-400';
+        else if (status === 'booked') colorClass = 'bg-red-400/50 text-red-900 dark:text-red-100 cursor-not-allowed';
+        else if (status === 'pending') colorClass = 'bg-yellow-400/50 text-yellow-900 dark:text-yellow-100 cursor-pointer hover:bg-yellow-500 hover:text-white';
+        
+        // Highlight selection
+        if (isSelected) colorClass = 'bg-blue-600 text-white shadow-lg shadow-blue-500/50 transform scale-105';
 
-            return (
-              <div 
-                key={i} 
+        days.push(
+            <div 
+                key={d}
                 onClick={() => {
-                   // Allow selecting a day even if it has bookings
-                   setFormData(prev => ({ ...prev, date: dateStr }));
+                    if (status !== 'disabled' && status !== 'booked') {
+                        setFormData(prev => ({ ...prev, date: dateStr }));
+                    }
                 }}
-                className={`aspect-square rounded-lg flex flex-col items-center justify-center text-xs transition-all duration-300 ${color}`}
-              >
-                <span className="font-bold">{d.getDate()}</span>
-              </div>
-            )
-          })}
+                className={`aspect-square rounded-lg flex items-center justify-center text-xs font-bold transition-all duration-200 ${colorClass}`}
+            >
+                {d}
+            </div>
+        );
+    }
+
+    return (
+      <div className="w-full">
+        {/* Month Navigation */}
+        <div className="flex justify-between items-center mb-4 px-2">
+          <button 
+            type="button" 
+            onClick={handlePrevMonth} 
+            className="p-2 hover:bg-white/20 dark:hover:bg-gray-700 rounded-full transition-colors"
+            title="Previous Month"
+          >
+            <ChevronLeft size={20} className="text-gray-700 dark:text-white" />
+          </button>
+          
+          <span className="font-bold text-gray-800 dark:text-white text-lg">{monthLabel}</span>
+          
+          <button 
+            type="button" 
+            onClick={handleNextMonth} 
+            className="p-2 hover:bg-white/20 dark:hover:bg-gray-700 rounded-full transition-colors"
+            title="Next Month"
+          >
+            <ChevronRight size={20} className="text-gray-700 dark:text-white" />
+          </button>
         </div>
-      </>
+
+        {/* Days Header */}
+        <div className="grid grid-cols-7 gap-2 mb-2 text-center">
+          {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(day => (
+            <span key={day} className="text-[10px] font-bold text-gray-500 uppercase">{day}</span>
+          ))}
+        </div>
+
+        {/* Calendar Grid */}
+        <div className="grid grid-cols-7 gap-2">
+            {days}
+        </div>
+        
+        <div className="text-center mt-3 pt-3 border-t border-gray-200 dark:border-gray-700/50">
+             <button 
+                type="button" 
+                className="text-xs text-emerald-600 dark:text-emerald-400 cursor-pointer hover:underline" 
+                onClick={handleNextMonth}
+             >
+                Check availability in {new Date(year, month + 1).toLocaleString('default', {month:'long'})} →
+             </button>
+        </div>
+      </div>
     );
   };
 
   return (
     <div className="pt-28 pb-20 px-4 min-h-screen">
       <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-10">
+        <div className="text-center mb-10 print:hidden">
           <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-emerald-600 to-teal-500 dark:from-emerald-300 dark:to-white mb-4">
             Book Your Experience
           </h1>
@@ -395,24 +407,79 @@ const Booking: React.FC = () => {
         </div>
 
         {step === 3 ? (
-          <GlassCard className="text-center py-16">
-            <motion.div 
-              initial={{ scale: 0 }} 
-              animate={{ scale: 1 }} 
-              className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-500/50"
-            >
-              <CheckCircle className="text-white w-10 h-10" />
-            </motion.div>
-            <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Booking Request Submitted!</h2>
-            <p className="text-gray-600 dark:text-gray-300 mb-8 max-w-md mx-auto">
-              Your booking for <strong>{formData.venue}</strong> has been received. <br/>
-              Booking Code: <span className="font-mono font-bold text-emerald-500">{bookingCode}</span><br/>
-              A confirmation email has been sent to {formData.email} from bookings@jkpalmandgarden.com.
-            </p>
-            <div className="flex justify-center">
-              <GlassButton onClick={() => navigate('/')} variant="secondary">Back to Home</GlassButton>
+          <div className="flex flex-col items-center">
+            {/* Action Buttons (Hidden on Print) */}
+            <div className="flex gap-4 mb-8 print:hidden">
+              <GlassButton onClick={handleDownload} variant="primary">
+                <Download size={20} /> Download to Gallery
+              </GlassButton>
+              <GlassButton onClick={handlePrint} variant="secondary">
+                <Printer size={20} /> Print Receipt
+              </GlassButton>
+              <GlassButton onClick={() => navigate('/')} variant="secondary" className="border-red-200 hover:bg-red-50 text-red-600">
+                Close
+              </GlassButton>
             </div>
-          </GlassCard>
+
+            {/* Receipt Card - This is what gets printed/downloaded */}
+            <div id="receipt-card" className="bg-white text-gray-900 w-full max-w-md p-8 rounded-3xl shadow-xl border-t-8 border-emerald-500 relative overflow-hidden">
+               {/* Watermark */}
+               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-5 pointer-events-none">
+                 <TreePalm size={300} />
+               </div>
+
+               <div className="relative z-10 text-center">
+                 <div className="flex items-center justify-center gap-2 mb-2">
+                   <div className="bg-emerald-500 p-2 rounded-lg">
+                     <TreePalm className="text-white" size={24} />
+                   </div>
+                   <h2 className="text-2xl font-bold text-emerald-800">JK Palms</h2>
+                 </div>
+                 <p className="text-xs text-gray-500 uppercase tracking-widest mb-6">Booking Receipt</p>
+                 
+                 <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 mb-6">
+                   <p className="text-sm text-emerald-600 mb-1">Booking Reference</p>
+                   <p className="text-3xl font-mono font-bold text-emerald-700 tracking-wider">{bookingCode}</p>
+                 </div>
+
+                 <div className="space-y-4 text-left">
+                    <div className="flex justify-between border-b border-dashed border-gray-200 pb-2">
+                       <span className="text-gray-500 text-sm">Customer</span>
+                       <span className="font-bold">{formData.name}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-gray-200 pb-2">
+                       <span className="text-gray-500 text-sm">Venue</span>
+                       <span className="font-bold">{formData.venue}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-gray-200 pb-2">
+                       <span className="text-gray-500 text-sm">Date</span>
+                       <span className="font-bold">{formData.date}</span>
+                    </div>
+                    {formData.venue === 'Football Pitch' ? (
+                      <div className="flex justify-between border-b border-dashed border-gray-200 pb-2">
+                         <span className="text-gray-500 text-sm">Time</span>
+                         <span className="font-bold">{formData.time} ({formData.duration}hrs)</span>
+                      </div>
+                    ) : null}
+                    <div className="flex justify-between items-center pt-2">
+                       <span className="text-gray-500 text-sm">Total Amount</span>
+                       <span className="text-xl font-bold text-emerald-600">₦{totalPrice.toLocaleString()}</span>
+                    </div>
+                 </div>
+
+                 <div className="mt-8 pt-4 border-t border-gray-100">
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                      Please present this receipt at the entrance to gain access.
+                      <br/>Contact: +234 811 886 1619
+                    </p>
+                 </div>
+               </div>
+            </div>
+            
+            <p className="mt-6 text-sm text-gray-500 dark:text-gray-400 print:hidden">
+              Your booking status is currently <strong>Pending</strong>. You can proceed to the venue with this receipt.
+            </p>
+          </div>
         ) : (
           <div className="grid md:grid-cols-3 gap-8">
             {/* Form Section */}
@@ -564,7 +631,7 @@ const Booking: React.FC = () => {
             </div>
 
             {/* Summary Sidebar */}
-            <div className="md:col-span-1">
+            <div className="md:col-span-1 print:hidden">
                <div className="sticky top-28 space-y-6">
                  {/* Calendar Preview */}
                  <GlassCard className="p-4">
@@ -573,11 +640,11 @@ const Booking: React.FC = () => {
                       {loadingAvailability && <RefreshCw className="animate-spin text-emerald-500" size={14} />}
                    </div>
                    
-                   {renderCalendarReal()}
+                   {renderCalendar()}
 
-                   <div className="flex gap-2 text-[10px] justify-center text-gray-500 mt-4">
+                   <div className="flex gap-2 text-[10px] justify-center text-gray-500 mt-4 flex-wrap">
                      <span className="flex items-center gap-1"><div className="w-2 h-2 bg-emerald-400 rounded-full"></div>Avail</span>
-                     <span className="flex items-center gap-1"><div className="w-2 h-2 bg-yellow-400 rounded-full"></div>Busy</span>
+                     <span className="flex items-center gap-1"><div className="w-2 h-2 bg-yellow-400 rounded-full"></div>Pending</span>
                      <span className="flex items-center gap-1"><div className="w-2 h-2 bg-red-400 rounded-full"></div>Booked</span>
                    </div>
                    

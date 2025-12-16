@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GlassCard, GlassButton } from './GlassUI';
 import { useData } from '../context/DataContext';
-import { Lock, LogOut, Check, X, Edit2, Trash2, Image as ImageIcon, RefreshCw, Loader2 } from 'lucide-react';
+import { Lock, LogOut, Check, X, Edit2, Trash2, Image as ImageIcon, RefreshCw, Loader2, Upload, Plus, Citrus } from 'lucide-react';
 import { BookingRecord } from '../types';
 import { supabase } from '../lib/supabase';
 
@@ -9,16 +9,27 @@ const AdminPanel: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [activeTab, setActiveTab] = useState<'bookings' | 'features' | 'gallery'>('bookings');
+  const [activeTab, setActiveTab] = useState<'bookings' | 'features' | 'gallery' | 'content'>('bookings');
   
   // Using any[] to accommodate the extra 'row_id' property mapping without changing global types
   const [dbBookings, setDbBookings] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const loginRef = useRef<HTMLDivElement>(null);
 
-  const { features, updateFeature, galleryImages, updateGallery } = useData();
+  // Upload State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadTarget, setUploadTarget] = useState<{type: 'feature' | 'gallery' | 'hero' | 'testimonial' | 'logo', index?: number} | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
-  // Scroll to login on mount or when auth state changes
+  const { 
+    features, updateFeature, 
+    galleryImages, updateGallery,
+    heroImage, updateHeroImage,
+    testimonials, updateTestimonials,
+    logo, updateLogo
+  } = useData();
+
+  // Scroll handling
   useEffect(() => {
     if (!isAuthenticated) {
       setTimeout(() => {
@@ -69,8 +80,10 @@ const AdminPanel: React.FC = () => {
         .eq('id', rowId);
 
       if (error) throw error;
-
-      fetchBookings(); // Refresh list
+      
+      // Removed Email sending logic here as requested
+      
+      fetchBookings();
     } catch (e: any) {
       console.error("Update failed:", e);
       alert("Failed to update status: " + (e.message || JSON.stringify(e)));
@@ -117,6 +130,89 @@ const AdminPanel: React.FC = () => {
     }
   };
 
+  // --- Image Upload Logic ---
+  const triggerUpload = (type: 'feature' | 'gallery' | 'hero' | 'testimonial' | 'logo', index?: number) => {
+    setUploadTarget({ type, index });
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    const file = e.target.files[0];
+    setIsUploading(true);
+    
+    try {
+      // Create a unique file name
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      // Upload to 'images' bucket
+      const { error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        if (uploadError.message.includes("Bucket not found")) {
+          throw new Error("Bucket 'images' not found. Please create a public bucket named 'images' in your Supabase Dashboard.");
+        }
+        throw uploadError;
+      }
+
+      // Get Public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('images')
+        .getPublicUrl(filePath);
+
+      // Update State based on target
+      if (uploadTarget?.type === 'feature' && typeof uploadTarget.index === 'number') {
+         const feature = features[uploadTarget.index];
+         updateFeature(uploadTarget.index, { ...feature, image: publicUrl });
+      } else if (uploadTarget?.type === 'gallery') {
+         updateGallery([...galleryImages, publicUrl]);
+      } else if (uploadTarget?.type === 'hero') {
+         updateHeroImage(publicUrl);
+      } else if (uploadTarget?.type === 'logo') {
+         updateLogo(publicUrl);
+      } else if (uploadTarget?.type === 'testimonial' && typeof uploadTarget.index === 'number') {
+         const newTestimonials = [...testimonials];
+         newTestimonials[uploadTarget.index] = { ...newTestimonials[uploadTarget.index], avatar: publicUrl };
+         updateTestimonials(newTestimonials);
+      }
+
+      alert("Image uploaded successfully!");
+    } catch (error: any) {
+      console.error('Upload failed:', error);
+      
+      // Handle RLS Errors specifically to guide the user
+      if (error.message && (error.message.includes('row-level security') || error.message.includes('permission denied'))) {
+        alert(
+          "UPLOAD FAILED: Permission Denied\n\n" +
+          "This is a security setting in your Supabase project.\n\n" +
+          "HOW TO FIX:\n" +
+          "1. Go to Supabase Dashboard > Storage > 'images' bucket.\n" +
+          "2. Click the 'Policies' tab (or Configuration).\n" +
+          "3. Create a new policy for 'INSERT' (Upload) permissions.\n" +
+          "4. Allow access for 'anon' or 'public' users.\n" +
+          "5. Save policy and try again."
+        );
+      } else {
+        alert(`Upload failed: ${error.message}`);
+      }
+    } finally {
+      setIsUploading(false);
+      setUploadTarget(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleTestimonialChange = (index: number, field: string, value: string) => {
+    const newTestimonials = [...testimonials];
+    newTestimonials[index] = { ...newTestimonials[index], [field]: value };
+    updateTestimonials(newTestimonials);
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen pt-24 px-4 flex items-center justify-center">
@@ -152,6 +248,15 @@ const AdminPanel: React.FC = () => {
   return (
     <div className="min-h-screen pt-24 px-4 pb-10">
       <div className="max-w-7xl mx-auto">
+        {/* Hidden File Input */}
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          className="hidden" 
+          accept="image/*" 
+          onChange={handleFileSelect} 
+        />
+
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Admin Dashboard</h1>
@@ -165,7 +270,7 @@ const AdminPanel: React.FC = () => {
 
         {/* Tabs */}
         <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
-          {['bookings', 'features', 'gallery'].map(tab => (
+          {['bookings', 'features', 'gallery', 'content'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
@@ -182,6 +287,13 @@ const AdminPanel: React.FC = () => {
 
         {/* Content Area */}
         <GlassCard className="min-h-[500px]">
+          {isUploading && (
+            <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center rounded-2xl">
+              <Loader2 className="animate-spin text-white w-12 h-12 mb-4" />
+              <div className="text-white font-bold">Uploading Image...</div>
+            </div>
+          )}
+
           {activeTab === 'bookings' && (
             <div className="overflow-x-auto">
               <div className="flex justify-between items-center mb-4 px-4">
@@ -281,13 +393,10 @@ const AdminPanel: React.FC = () => {
                      <img src={feature.image} alt={feature.title} className="w-full h-full object-cover" />
                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                        <button 
-                         className="bg-white text-black px-3 py-1 rounded text-sm font-bold flex items-center gap-1"
-                         onClick={() => {
-                           const url = prompt("Enter new image URL:", feature.image);
-                           if (url) updateFeature(idx, { ...feature, image: url });
-                         }}
+                         className="bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-emerald-600"
+                         onClick={() => triggerUpload('feature', idx)}
                        >
-                         <ImageIcon size={14} /> Change Image
+                         <Upload size={16} /> Upload New
                        </button>
                      </div>
                    </div>
@@ -308,31 +417,170 @@ const AdminPanel: React.FC = () => {
 
           {activeTab === 'gallery' && (
              <div>
-               <div className="mb-4">
+               <div className="mb-6 flex gap-3">
+                 <button 
+                   onClick={() => triggerUpload('gallery')}
+                   className="bg-emerald-500 text-white px-6 py-3 rounded-xl font-bold hover:bg-emerald-600 flex items-center gap-2 shadow-lg"
+                 >
+                   <Upload size={20} /> Upload Photo
+                 </button>
+                 
                  <button 
                    onClick={() => {
                       const url = prompt("Enter Image URL:");
                       if (url) updateGallery([...galleryImages, url]);
                    }}
-                   className="bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-600"
+                   className="bg-white/10 text-gray-700 dark:text-white border border-gray-500/30 px-4 py-3 rounded-xl font-bold hover:bg-white/20 flex items-center gap-2"
                  >
-                   + Add New Image URL
+                   <Plus size={20} /> Add URL
                  </button>
                </div>
-               <div className="grid grid-cols-4 gap-4">
+
+               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                  {galleryImages.map((image, idx) => (
-                   <div key={idx} className="relative group rounded-lg overflow-hidden h-32">
-                     <img src={image} className="w-full h-full object-cover" alt="" />
-                     <button 
-                        onClick={() => updateGallery(galleryImages.filter((_, i) => i !== idx))}
-                        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                     >
-                       <Trash2 size={16} />
-                     </button>
+                   <div key={idx} className="relative group rounded-xl overflow-hidden h-40 shadow-md">
+                     <img src={image} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt="" />
+                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                       <button 
+                          onClick={() => {
+                            if (window.confirm("Remove this image?")) {
+                              updateGallery(galleryImages.filter((_, i) => i !== idx));
+                            }
+                          }}
+                          className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600"
+                       >
+                         <Trash2 size={20} />
+                       </button>
+                     </div>
                    </div>
                  ))}
                </div>
              </div>
+          )}
+
+          {activeTab === 'content' && (
+            <div className="space-y-12">
+              {/* Branding Section */}
+              <section>
+                <h3 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white flex items-center gap-2">
+                  <Citrus className="text-emerald-500" /> Branding
+                </h3>
+                <div className="bg-white/30 dark:bg-black/20 p-6 rounded-2xl border border-white/10 flex items-center gap-6">
+                  <div className="relative w-32 h-32 bg-white/20 rounded-xl flex items-center justify-center overflow-hidden border border-white/30 group">
+                    {logo ? (
+                      <img src={logo} alt="Logo" className="w-full h-full object-contain p-2" />
+                    ) : (
+                      <span className="text-xs text-gray-500">No Logo</span>
+                    )}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                       <button 
+                         onClick={() => triggerUpload('logo')}
+                         className="text-white text-xs font-bold flex flex-col items-center"
+                       >
+                         <Upload size={20} className="mb-1"/> Change
+                       </button>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-800 dark:text-white mb-2">Website Logo & Favicon</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md">
+                      Upload a PNG or JPEG file. This image will be used in the Navigation Bar and as the browser tab icon (favicon).
+                    </p>
+                    <button 
+                       onClick={() => triggerUpload('logo')}
+                       className="mt-4 bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-emerald-600 flex items-center gap-2"
+                    >
+                      <Upload size={16} /> Upload Logo
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              {/* Hero Image Section */}
+              <section>
+                <h3 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white flex items-center gap-2">
+                  <ImageIcon className="text-emerald-500" /> Hero Section Image
+                </h3>
+                <div className="bg-white/30 dark:bg-black/20 p-6 rounded-2xl border border-white/10">
+                  <div className="relative h-64 md:h-80 w-full rounded-xl overflow-hidden group">
+                    <img 
+                      src={heroImage} 
+                      alt="Hero Banner" 
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => triggerUpload('hero')}
+                        className="bg-emerald-500 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-600 shadow-lg transform hover:scale-105 transition-all"
+                      >
+                        <Upload size={20} /> Upload New Banner
+                      </button>
+                    </div>
+                  </div>
+                  <p className="mt-4 text-sm text-gray-500 dark:text-gray-400 text-center">
+                    This image appears as the large banner on the Home page. Recommended size: 1920x1080.
+                  </p>
+                </div>
+              </section>
+
+              {/* Testimonials Section */}
+              <section>
+                <h3 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white flex items-center gap-2">
+                  <Edit2 className="text-emerald-500" /> Client Reviews
+                </h3>
+                <div className="grid md:grid-cols-3 gap-6">
+                  {testimonials.map((testimonial, idx) => (
+                    <div key={idx} className="bg-white/30 dark:bg-black/20 p-6 rounded-2xl border border-white/10 relative">
+                      <div className="flex justify-center mb-4">
+                        <div className="relative w-24 h-24 group">
+                          <img 
+                            src={testimonial.avatar} 
+                            alt="Client" 
+                            className="w-full h-full rounded-full object-cover border-4 border-emerald-500/20"
+                          />
+                          <button 
+                            onClick={() => triggerUpload('testimonial', idx)}
+                            className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-white"
+                          >
+                            <Upload size={18} />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-3">
+                         <div>
+                           <label className="text-xs font-bold text-gray-500 uppercase">Name</label>
+                           <input 
+                             type="text" 
+                             value={testimonial.name}
+                             onChange={(e) => handleTestimonialChange(idx, 'name', e.target.value)}
+                             className="w-full bg-transparent border-b border-gray-400 focus:border-emerald-500 outline-none py-1 font-bold text-gray-800 dark:text-white"
+                           />
+                         </div>
+                         <div>
+                           <label className="text-xs font-bold text-gray-500 uppercase">Role</label>
+                           <input 
+                             type="text" 
+                             value={testimonial.role}
+                             onChange={(e) => handleTestimonialChange(idx, 'role', e.target.value)}
+                             className="w-full bg-transparent border-b border-gray-400 focus:border-emerald-500 outline-none py-1 text-sm text-emerald-600"
+                           />
+                         </div>
+                         <div>
+                           <label className="text-xs font-bold text-gray-500 uppercase">Comment</label>
+                           <textarea 
+                             rows={3}
+                             value={testimonial.comment}
+                             onChange={(e) => handleTestimonialChange(idx, 'comment', e.target.value)}
+                             className="w-full bg-transparent border border-gray-400/30 rounded p-2 focus:border-emerald-500 outline-none text-sm text-gray-600 dark:text-gray-300 mt-1 resize-none"
+                           />
+                         </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
           )}
         </GlassCard>
       </div>

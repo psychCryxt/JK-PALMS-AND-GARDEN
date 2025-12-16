@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, X, Sun, Moon, TreePalm } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useData } from '../context/DataContext';
 
 interface NavbarProps {
   darkMode: boolean;
@@ -10,6 +11,7 @@ interface NavbarProps {
 
 const Navbar: React.FC<NavbarProps> = ({ darkMode, toggleDarkMode }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const { logo } = useData();
 
   const navLinks = [
     { name: 'Home', path: '/' },
@@ -23,10 +25,18 @@ const Navbar: React.FC<NavbarProps> = ({ darkMode, toggleDarkMode }) => {
     <nav className="fixed top-0 left-0 right-0 z-50 px-4 py-4">
       <div className="max-w-7xl mx-auto glass-panel rounded-2xl px-6 py-3 flex justify-between items-center shadow-lg">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="p-2 bg-gradient-to-br from-emerald-400 to-green-600 rounded-lg group-hover:rotate-12 transition-transform">
-            <TreePalm className="text-white w-6 h-6" />
-          </div>
+        <Link to="/" className="flex items-center gap-3 group">
+          {logo ? (
+            <img 
+              src={logo} 
+              alt="JK Palms Logo" 
+              className="h-10 w-auto object-contain rounded-lg hover:scale-105 transition-transform" 
+            />
+          ) : (
+            <div className="p-2 bg-gradient-to-br from-emerald-400 to-green-600 rounded-lg group-hover:rotate-12 transition-transform">
+              <TreePalm className="text-white w-6 h-6" />
+            </div>
+          )}
           <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-teal-800 dark:from-emerald-300 dark:to-teal-500">
             JK Palms
           </span>

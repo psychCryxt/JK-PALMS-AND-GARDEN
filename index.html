@@ -14,6 +14,25 @@
               sans: ['Inter', 'sans-serif'],
             },
             colors: {
+              // Overriding 'emerald' to match the JK Palms Logo Green exactly
+              emerald: {
+                50: '#f0fdf4',
+                100: '#dcfce7',
+                200: '#bbf7d0',
+                300: '#86efac',
+                400: '#4ade80',
+                500: '#00A859', // JK Palms Primary Green
+                600: '#008f4c',
+                700: '#00753e',
+                800: '#065f3a',
+                900: '#064e3b',
+              },
+              // Adding the Logo's Sky Blue as a custom color
+              sky: {
+                400: '#38bdf8',
+                500: '#0ea5e9', 
+                light: '#87CEEB', // Logo background circle
+              },
               glass: {
                 100: 'rgba(255, 255, 255, 0.1)',
                 200: 'rgba(255, 255, 255, 0.2)',
@@ -55,13 +74,14 @@
       }
 
       .gradient-bg {
-        /* Updated light theme gradient to mix Blue, Green and Teal */
-        background: linear-gradient(-45deg, #bfdbfe, #86efac, #67e8f9, #bfdbfe);
+        /* Updated gradient to match Logo: Sky Blue + White + Logo Green */
+        background: linear-gradient(-45deg, #E0F2FE, #DCFCE7, #F0FDF4, #BAE6FD);
         background-size: 400% 400%;
         animation: gradient-xy 15s ease infinite;
       }
       .dark .gradient-bg {
-        background: linear-gradient(-45deg, #111827, #064e3b, #0f172a, #111827);
+        /* Darker version preserving the Green/Blue tint */
+        background: linear-gradient(-45deg, #0f172a, #064e3b, #0c4a6e, #111827);
         background-size: 400% 400%;
         animation: gradient-xy 15s ease infinite;
       }
@@ -74,7 +94,7 @@
         background: rgba(255, 255, 255, 0.1);
       }
       ::-webkit-scrollbar-thumb {
-        background: rgba(16, 185, 129, 0.5);
+        background: #00A859; /* Logo Green */
         border-radius: 5px;
       }
     </style>
@@ -90,7 +110,8 @@
     "vite": "https://esm.sh/vite@^7.2.7",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.87.1",
-    "@emailjs/browser": "https://esm.sh/@emailjs/browser@^4.4.1"
+    "@emailjs/browser": "https://esm.sh/@emailjs/browser@^4.4.1",
+    "html2canvas": "https://esm.sh/html2canvas@^1.4.1"
   }
 }
 </script>

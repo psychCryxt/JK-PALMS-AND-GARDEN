@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
-import { ArrowRight, Utensils, Lock, Smile, Home as HomeIcon, Clock, PartyPopper, Trees, X, ChevronUp } from 'lucide-react';
-import { HERO_TITLE, HERO_SUBTITLE, TESTIMONIALS } from '../constants';
+import { ArrowRight, Utensils, Lock, Smile, Home as HomeIcon, Clock, PartyPopper, Trees, X, ChevronUp, Instagram } from 'lucide-react';
+import { HERO_TITLE, HERO_SUBTITLE } from '../constants';
 import { GlassCard, GlassButton } from './GlassUI';
 import { useData } from '../context/DataContext';
 
@@ -12,7 +12,7 @@ const Home: React.FC = () => {
   const [showScrollTop, setShowScrollTop] = useState(false);
   
   // Use Data from Context
-  const { features, services, galleryImages } = useData();
+  const { features, services, galleryImages, heroImage, testimonials } = useData();
 
   // Handle Hash Scrolling
   useEffect(() => {
@@ -96,7 +96,7 @@ const Home: React.FC = () => {
             <div className="relative w-full h-[600px]">
               <div className="absolute inset-0 bg-emerald-500/20 blur-3xl rounded-full"></div>
               <img 
-                src="./img/captured3.jpg" 
+                src={heroImage} 
                 alt="Nature" 
                 className="rounded-3xl shadow-2xl object-cover w-full h-full border-4 border-white/30 transform hover:scale-105 transition-duration-500"
               />
@@ -241,6 +241,20 @@ const Home: React.FC = () => {
               </motion.div>
             ))}
           </div>
+
+          {/* Instagram Button */}
+          <div className="flex justify-center mt-12">
+            <a 
+              href="https://www.instagram.com/jkpalms/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="group"
+            >
+              <GlassButton variant="secondary" className="flex items-center gap-3 px-8 py-4 text-lg border-emerald-500/30 group-hover:bg-gradient-to-r group-hover:from-purple-500 group-hover:to-pink-500 group-hover:text-white group-hover:border-transparent transition-all duration-500">
+                <Instagram size={24} /> View More on Instagram
+              </GlassButton>
+            </a>
+          </div>
         </div>
       </section>
 
@@ -249,7 +263,7 @@ const Home: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           <h2 className="text-4xl font-bold mb-12 text-center text-gray-800 dark:text-white">Client Reviews</h2>
           <div className="grid md:grid-cols-3 gap-8">
-            {TESTIMONIALS.map((t, i) => (
+            {testimonials.map((t, i) => (
               <GlassCard key={i} className="relative mt-8">
                 <div className="absolute -top-8 left-1/2 transform -translate-x-1/2">
                    <img src={t.avatar} alt={t.name} className="w-16 h-16 rounded-full border-4 border-white dark:border-gray-800 object-cover shadow-lg" />

@@ -1,17 +1,23 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { BookingRecord, FeatureItem, ServiceItem } from '../types';
-import { INITIAL_FEATURES, INITIAL_SERVICES, INITIAL_GALLERY_IMAGES } from '../constants';
+import { BookingRecord, FeatureItem, ServiceItem, Testimonial } from '../types';
+import { INITIAL_FEATURES, INITIAL_SERVICES, INITIAL_GALLERY_IMAGES, TESTIMONIALS } from '../constants';
 
 interface DataContextType {
   features: FeatureItem[];
   services: ServiceItem[];
   galleryImages: string[];
   bookings: BookingRecord[];
+  heroImage: string;
+  testimonials: Testimonial[];
+  logo: string;
   addBooking: (booking: BookingRecord) => void;
   updateBookingStatus: (id: string, status: 'Pending' | 'Approved' | 'Rejected') => void;
   updateFeature: (index: number, feature: FeatureItem) => void;
   updateService: (index: number, service: ServiceItem) => void;
   updateGallery: (images: string[]) => void;
+  updateHeroImage: (url: string) => void;
+  updateTestimonials: (testimonials: Testimonial[]) => void;
+  updateLogo: (url: string) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -38,11 +44,40 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [heroImage, setHeroImage] = useState<string>(() => {
+    return localStorage.getItem('jk_hero_image') || "./img/captured3.jpg";
+  });
+
+  const [testimonials, setTestimonials] = useState<Testimonial[]>(() => {
+    const saved = localStorage.getItem('jk_testimonials');
+    return saved ? JSON.parse(saved) : TESTIMONIALS;
+  });
+
+  const [logo, setLogo] = useState<string>(() => {
+    return localStorage.getItem('jk_logo') || "";
+  });
+
   // Persist to LocalStorage whenever state changes
   useEffect(() => localStorage.setItem('jk_features', JSON.stringify(features)), [features]);
   useEffect(() => localStorage.setItem('jk_services', JSON.stringify(services)), [services]);
   useEffect(() => localStorage.setItem('jk_gallery_images', JSON.stringify(galleryImages)), [galleryImages]);
   useEffect(() => localStorage.setItem('jk_bookings', JSON.stringify(bookings)), [bookings]);
+  useEffect(() => localStorage.setItem('jk_hero_image', heroImage), [heroImage]);
+  useEffect(() => localStorage.setItem('jk_testimonials', JSON.stringify(testimonials)), [testimonials]);
+  useEffect(() => localStorage.setItem('jk_logo', logo), [logo]);
+
+  // Update Favicon dynamically when logo changes
+  useEffect(() => {
+    if (logo) {
+      let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = logo;
+    }
+  }, [logo]);
 
   const addBooking = (booking: BookingRecord) => {
     setBookings(prev => [booking, ...prev]);
@@ -68,17 +103,35 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setGalleryImages(images);
   };
 
+  const updateHeroImage = (url: string) => {
+    setHeroImage(url);
+  };
+
+  const updateTestimonials = (newTestimonials: Testimonial[]) => {
+    setTestimonials(newTestimonials);
+  };
+
+  const updateLogo = (url: string) => {
+    setLogo(url);
+  };
+
   return (
     <DataContext.Provider value={{
       features,
       services,
       galleryImages,
       bookings,
+      heroImage,
+      testimonials,
+      logo,
       addBooking,
       updateBookingStatus,
       updateFeature,
       updateService,
-      updateGallery
+      updateGallery,
+      updateHeroImage,
+      updateTestimonials,
+      updateLogo
     }}>
       {children}
     </DataContext.Provider>
