@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import Home from './components/Home';
 import Booking from './components/Booking';
 import AdminPanel from './components/AdminPanel';
+import Pricing from './components/Pricing';
 import Footer from './components/Footer';
 import { DataProvider } from './context/DataContext';
 
@@ -69,6 +70,7 @@ const App: React.FC = () => {
             <main className="flex-grow">
               <Routes>
                 <Route path="/" element={<Home />} />
+                <Route path="/pricing" element={<Pricing />} />
                 <Route path="/booking" element={<Booking />} />
                 <Route path="/admin" element={<AdminPanel />} />
               </Routes>

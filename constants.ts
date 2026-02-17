@@ -1,4 +1,4 @@
-import { ServiceItem, Testimonial, FeatureItem, EventItem } from './types';
+import { ServiceItem, Testimonial, FeatureItem, EventItem, PricingItem } from './types';
 
 export const HERO_TITLE = "Adventure Blooms, Laughter Echoes";
 export const HERO_SUBTITLE = "Escape the hustle. Embrace nature. Create memories in our lush oasis.";
@@ -67,6 +67,14 @@ export const INITIAL_EVENTS: EventItem[] = [
     description: "Face painting, bouncy castles, and discount entry for the Kids Playground.",
     image: "https://jkpalmandgarden.com/img/j10.jpg"
   }
+];
+
+export const INITIAL_PRICING: PricingItem[] = [
+  { id: 1, title: "Football Pitch", price: 8000, unit: "per hour", description: "Standard artificial turf pitch with floodlights.", category: "Venue", icon: "activity" },
+  { id: 2, title: "The Courtyard", price: 100000, unit: "per day", description: "Spacious open area for weddings and large ceremonies.", category: "Venue", icon: "home" },
+  { id: 3, title: "Palm Garden", price: 100000, unit: "per day", description: "Lush botanical setting for photoshoots and intimate parties.", category: "Venue", icon: "tree" },
+  { id: 4, title: "Kids Entry", price: 200, unit: "per child", description: "Full day access to the playground facilities.", category: "Entry", icon: "smile" },
+  { id: 5, title: "Snooker Table", price: 1000, unit: "per hour", description: "Professional snooker gaming in the indoor hall.", category: "Activity", icon: "target" }
 ];
 
 export const INITIAL_GALLERY_IMAGES = [

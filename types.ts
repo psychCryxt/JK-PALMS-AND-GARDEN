@@ -37,6 +37,16 @@ export interface EventItem {
   image: string;
 }
 
+export interface PricingItem {
+  id: number;
+  title: string;
+  price: number;
+  unit: string;
+  description: string;
+  category: 'Venue' | 'Activity' | 'Entry';
+  icon: string;
+}
+
 export interface BookingState {
   name: string;
   email: string;
