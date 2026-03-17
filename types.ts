@@ -78,3 +78,13 @@ export interface BlogPost {
   category: string;
   image: string;
 }
+
+export interface DrinkItem {
+  name: string;
+  price: string;
+}
+
+export interface DrinkCategory {
+  category: string;
+  items: DrinkItem[];
+}

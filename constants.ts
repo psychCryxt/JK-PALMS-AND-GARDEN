@@ -1,4 +1,4 @@
-import { ServiceItem, Testimonial, FeatureItem, EventItem, PricingItem } from './types';
+import { ServiceItem, Testimonial, FeatureItem, EventItem, PricingItem, DrinkCategory } from './types';
 
 export const HERO_TITLE = "Adventure Blooms, Laughter Echoes";
 export const HERO_SUBTITLE = "Escape the hustle. Embrace nature. Create memories in our lush oasis.";
@@ -99,3 +99,60 @@ export const CONTACT_INFO = {
   email: "jkplams20@gmail.com",
   phone: "+234 811 886 1619"
 };
+
+export const DRINKS_MENU: DrinkCategory[] = [
+  {
+    category: "BEVERAGES",
+    items: [
+      { name: "COKE", price: "N700" },
+      { name: "WATER", price: "N300" },
+      { name: "FAYROUZ", price: "N1,000" },
+      { name: "SCHWEPPES", price: "N800" },
+      { name: "HOLLANDA EXOTIC", price: "N2,500" },
+      { name: "COCONUT YOGHURT", price: "N3,000" },
+      { name: "MALTINA", price: "N800" },
+    ]
+  },
+  {
+    category: "ENERGY DRINKS",
+    items: [
+      { name: "CLIMAX", price: "N1,000,000" },
+      { name: "FEARLESS", price: "N800,000" },
+      { name: "SMIRNOFF ICE", price: "N1,700" },
+      { name: "BLACK BULLET", price: "N2,000" },
+    ]
+  },
+  {
+    category: "BEER",
+    items: [
+      { name: "LIFE", price: "N1,200" },
+      { name: "GOLDBERG", price: "N1,500" },
+      { name: "HEINEKEN", price: "N1,200" },
+      { name: "STAR", price: "N1,200" },
+      { name: "GUINNESS STOUT", price: "N1,500" },
+      { name: "TIGER", price: "N1,200" },
+      { name: "SMOOTH", price: "N1,500" },
+      { name: "CASTLELITE", price: "N1,500" },
+      { name: "ORIGIN BEER", price: "N1,500" },
+      { name: "TROPHY", price: "N1,200" },
+      { name: "TROPHY STOUT", price: "N1,500" },
+      { name: "LEGEND", price: "N1,500" },
+      { name: "DESPERADO", price: "N1,500" },
+      { name: "GULDER", price: "N1,200" },
+      { name: "HERO", price: "N1,200" },
+    ]
+  },
+  {
+    category: "WINE, GIN, SPIRIT",
+    items: [
+      { name: "1960 ROOT BOTTLE", price: "N5,500" },
+      { name: "ORIGIN BITTERS", price: "N1,500" },
+      { name: "CAPTAIN MORGAN", price: "N15,000" },
+      { name: "BEST CREAM", price: "N15,000" },
+      { name: "FLART VODKA", price: "N15,000" },
+      { name: "JACK DANIELS", price: "N45,000" },
+      { name: "BLACK AND WHITE", price: "N15,000" },
+      { name: "FOUR COUSIN", price: "N15,000" },
+    ]
+  }
+];
