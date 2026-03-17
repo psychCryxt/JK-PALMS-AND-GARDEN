@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { BookingRecord, FeatureItem, ServiceItem, Testimonial, EventItem, PricingItem } from '../types';
-import { INITIAL_FEATURES, INITIAL_SERVICES, INITIAL_GALLERY_IMAGES, TESTIMONIALS, INITIAL_EVENTS, INITIAL_PRICING } from '../constants';
+import { BookingRecord, FeatureItem, ServiceItem, Testimonial, EventItem, PricingItem, DrinkCategory } from '../types';
+import { INITIAL_FEATURES, INITIAL_SERVICES, INITIAL_GALLERY_IMAGES, TESTIMONIALS, INITIAL_EVENTS, INITIAL_PRICING, DRINKS_MENU } from '../constants';
 import { supabase } from '../lib/supabase';
 
 interface DataContextType {
@@ -13,6 +13,7 @@ interface DataContextType {
   logo: string;
   events: EventItem[];
   pricing: PricingItem[];
+  drinksMenu: DrinkCategory[];
   syncStatus: 'synced' | 'saving' | 'error';
   syncError: string | null;
   addBooking: (booking: BookingRecord) => void;
@@ -25,6 +26,7 @@ interface DataContextType {
   updateLogo: (url: string) => void;
   updateEvents: (events: EventItem[]) => void;
   updatePricing: (pricing: PricingItem[]) => void;
+  updateDrinksMenu: (drinks: DrinkCategory[]) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -73,6 +75,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [pricing, setPricing] = useState<PricingItem[]>(() => {
     const saved = localStorage.getItem('jk_pricing');
     return saved ? JSON.parse(saved) : INITIAL_PRICING;
+  });
+
+  const [drinksMenu, setDrinksMenu] = useState<DrinkCategory[]>(() => {
+    const saved = localStorage.getItem('jk_drinks_menu');
+    return saved ? JSON.parse(saved) : DRINKS_MENU;
   });
 
   const [syncStatus, setSyncStatus] = useState<'synced' | 'saving' | 'error'>('synced');
@@ -152,6 +159,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       case 'jk_pricing': 
         setPricing(val); 
         localStorage.setItem('jk_pricing', JSON.stringify(val));
+        break;
+      case 'jk_drinks_menu': 
+        setDrinksMenu(val); 
+        localStorage.setItem('jk_drinks_menu', JSON.stringify(val));
         break;
     }
   }, []);
@@ -290,6 +301,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     persist('jk_pricing', newPricing, false); // Debounced save for text edits
   };
 
+  const updateDrinksMenu = (newDrinks: DrinkCategory[]) => {
+    setDrinksMenu(newDrinks);
+    persist('jk_drinks_menu', newDrinks, false); // Debounced save for text edits
+  };
+
   return (
     <DataContext.Provider value={{
       features,
@@ -301,6 +317,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       logo,
       events,
       pricing,
+      drinksMenu,
       syncStatus,
       syncError,
       addBooking,
@@ -312,7 +329,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateTestimonials,
       updateLogo,
       updateEvents,
-      updatePricing
+      updatePricing,
+      updateDrinksMenu
     }}>
       {children}
     </DataContext.Provider>

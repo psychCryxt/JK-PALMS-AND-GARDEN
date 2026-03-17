@@ -10,7 +10,7 @@ const AdminPanel: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [activeTab, setActiveTab] = useState<'bookings' | 'features' | 'gallery' | 'content' | 'events' | 'pricing'>('bookings');
+  const [activeTab, setActiveTab] = useState<'bookings' | 'features' | 'gallery' | 'content' | 'events' | 'pricing' | 'drinks'>('bookings');
   
   const [dbBookings, setDbBookings] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -28,6 +28,7 @@ const AdminPanel: React.FC = () => {
     logo, updateLogo,
     events, updateEvents,
     pricing, updatePricing,
+    drinksMenu, updateDrinksMenu,
     syncStatus,
     syncError 
   } = useData();
@@ -175,6 +176,41 @@ const AdminPanel: React.FC = () => {
     updatePricing(newPricing);
   };
 
+  // --- Drinks Menu Management ---
+  const handleAddDrinkCategory = () => {
+    updateDrinksMenu([...drinksMenu, { category: 'NEW CATEGORY', items: [] }]);
+  };
+
+  const handleDeleteDrinkCategory = (index: number) => {
+    if (window.confirm("Delete this entire category and all its drinks?")) {
+      updateDrinksMenu(drinksMenu.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleCategoryNameChange = (index: number, name: string) => {
+    const newMenu = [...drinksMenu];
+    newMenu[index].category = name;
+    updateDrinksMenu(newMenu);
+  };
+
+  const handleAddDrinkItem = (catIndex: number) => {
+    const newMenu = [...drinksMenu];
+    newMenu[catIndex].items.push({ name: 'New Drink', price: 'N0' });
+    updateDrinksMenu(newMenu);
+  };
+
+  const handleDeleteDrinkItem = (catIndex: number, itemIndex: number) => {
+    const newMenu = [...drinksMenu];
+    newMenu[catIndex].items = newMenu[catIndex].items.filter((_, i) => i !== itemIndex);
+    updateDrinksMenu(newMenu);
+  };
+
+  const handleDrinkItemChange = (catIndex: number, itemIndex: number, field: 'name' | 'price', value: string) => {
+    const newMenu = [...drinksMenu];
+    newMenu[catIndex].items[itemIndex][field] = value;
+    updateDrinksMenu(newMenu);
+  };
+
   // --- Event Management ---
   // Fix: Added missing handleEventChange function
   const handleEventChange = (index: number, field: keyof EventItem, value: any) => {
@@ -220,7 +256,7 @@ const AdminPanel: React.FC = () => {
         </div>
 
         <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
-          {['bookings', 'pricing', 'features', 'gallery', 'content', 'events'].map(tab => (
+          {['bookings', 'pricing', 'drinks', 'features', 'gallery', 'content', 'events'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab as any)} className={`px-6 py-2 rounded-full font-bold capitalize transition-all ${activeTab === tab ? 'bg-emerald-500 text-white shadow-lg' : 'bg-white/20 hover:bg-white/40'}`}>{tab}</button>
           ))}
         </div>
@@ -265,6 +301,62 @@ const AdminPanel: React.FC = () => {
                       </div><button onClick={() => handleDeletePricing(item.id)} className="text-red-500 hover:text-red-700 p-2"><Trash2 size={18}/></button></div>
                    </div>
                  ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'drinks' && (
+            <div className="space-y-8">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl font-bold flex items-center gap-2"><Citrus className="text-emerald-500"/> Drinks Menu Editor</h3>
+                <button onClick={handleAddDrinkCategory} className="bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2">
+                  <Plus size={18}/> Add Category
+                </button>
+              </div>
+
+              <div className="space-y-10">
+                {drinksMenu.map((cat, catIdx) => (
+                  <div key={catIdx} className="bg-white/20 dark:bg-black/30 p-6 rounded-2xl border border-white/10">
+                    <div className="flex justify-between items-center mb-6">
+                      <input 
+                        defaultValue={cat.category} 
+                        onBlur={(e) => handleCategoryNameChange(catIdx, e.target.value)}
+                        className="bg-transparent text-xl font-bold text-emerald-600 dark:text-emerald-400 border-b border-emerald-500/30 outline-none focus:border-emerald-500 w-full max-w-md uppercase tracking-wider"
+                      />
+                      <button onClick={() => handleDeleteDrinkCategory(catIdx)} className="text-red-500 hover:bg-red-500/10 p-2 rounded-lg transition-colors">
+                        <Trash2 size={20} />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                      {cat.items.map((item, itemIdx) => (
+                        <div key={itemIdx} className="flex items-center gap-3 group">
+                          <input 
+                            defaultValue={item.name} 
+                            onBlur={(e) => handleDrinkItemChange(catIdx, itemIdx, 'name', e.target.value)}
+                            className="flex-grow bg-transparent border-b border-gray-500/20 outline-none focus:border-emerald-500 py-1 text-sm"
+                            placeholder="Drink Name"
+                          />
+                          <input 
+                            defaultValue={item.price} 
+                            onBlur={(e) => handleDrinkItemChange(catIdx, itemIdx, 'price', e.target.value)}
+                            className="w-24 bg-transparent border-b border-gray-500/20 outline-none focus:border-emerald-500 py-1 text-sm font-bold text-emerald-600"
+                            placeholder="Price (e.g. N500)"
+                          />
+                          <button onClick={() => handleDeleteDrinkItem(catIdx, itemIdx)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity">
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ))}
+                      <button 
+                        onClick={() => handleAddDrinkItem(catIdx)}
+                        className="flex items-center gap-2 text-emerald-500 text-sm font-bold hover:underline mt-2"
+                      >
+                        <Plus size={14} /> Add Item
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}

@@ -2,11 +2,10 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { GlassCard } from './GlassUI';
 import { useData } from '../context/DataContext';
-import { DRINKS_MENU } from '../constants';
 import { Instagram, Facebook, Info, Palmtree, Beer, Coffee, Wine } from 'lucide-react';
 
 const Pricing: React.FC = () => {
-  const { pricing, logo } = useData();
+  const { pricing, logo, drinksMenu } = useData();
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
@@ -55,7 +54,7 @@ const Pricing: React.FC = () => {
 
         {/* Drinks Menu Sections */}
         <div className="space-y-12">
-          {DRINKS_MENU.map((cat, catIdx) => (
+          {drinksMenu.map((cat, catIdx) => (
             <motion.div
               key={cat.category}
               initial={{ opacity: 0, y: 20 }}
