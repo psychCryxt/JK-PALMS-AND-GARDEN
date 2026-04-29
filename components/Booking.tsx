@@ -8,15 +8,8 @@ import { useData } from '../context/DataContext';
 import { supabase } from '../lib/supabase';
 import html2canvas from 'html2canvas';
 
-const VENUES: { type: VenueType; price: number; unit: string }[] = [
-  { type: 'Football Pitch', price: 8000, unit: '/hour' },
-  { type: 'Courtyard', price: 100000, unit: '/day' },
-  { type: 'Palm Garden', price: 100000, unit: '/day' },
-  { type: 'Kids Playground', price: 200, unit: '/person' },
-];
-
 const Booking: React.FC = () => {
-  const { addBooking } = useData();
+  const { addBooking, pricing } = useData();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,6 +19,50 @@ const Booking: React.FC = () => {
   // Availability State
   const [existingBookings, setExistingBookings] = useState<any[]>([]);
   const [loadingAvailability, setLoadingAvailability] = useState(false);
+  
+  // Derived Venues for UI
+  const [venuesList, setVenuesList] = useState<{ type: VenueType; price: number; unit: string }[]>([]);
+
+  useEffect(() => {
+    if (pricing && pricing.length > 0) {
+      // Create a unique list of venues based on known types
+      const types: VenueType[] = ['Football Pitch', 'Courtyard', 'Palm Garden', 'Kids Playground', 'Sendforth Event'];
+      const derived = types.map(t => {
+        // Find the most relevant pricing item
+        const item = pricing.find(p => p.title.includes(t) || p.category === 'Venue' && t === 'Courtyard');
+        
+        // Default fallbacks if not found
+        let price = 0;
+        let unit = '';
+
+        if (t === 'Football Pitch') {
+            const h1 = pricing.find(p => p.title.includes('1 Hour') && p.title.includes('Football'));
+            price = h1 ? h1.price : 8000;
+            unit = '/hour';
+        } else if (t === 'Kids Playground') {
+            const p = pricing.find(p => p.title.includes('Kids') || p.category === 'Entry');
+            price = p ? p.price : 200;
+            unit = '/child';
+        } else {
+            const p = pricing.find(p => p.title.toLowerCase().includes(t.toLowerCase()));
+            price = p ? p.price : 100000;
+            unit = t === 'Sendforth Event' ? '/event' : '/day';
+        }
+
+        return { type: t, price, unit };
+      });
+      setVenuesList(derived);
+    } else {
+      // Fallback defaults
+      setVenuesList([
+        { type: 'Football Pitch', price: 8000, unit: '/hour' },
+        { type: 'Courtyard', price: 100000, unit: '/day' },
+        { type: 'Palm Garden', price: 100000, unit: '/day' },
+        { type: 'Kids Playground', price: 200, unit: '/child' },
+        { type: 'Sendforth Event', price: 100000, unit: '/event' },
+      ]);
+    }
+  }, [pricing]);
   
   // Calendar View State
   const [viewDate, setViewDate] = useState(new Date());
@@ -83,20 +120,33 @@ const Booking: React.FC = () => {
 
   useEffect(() => {
     // Pricing Logic
-    const selectedVenue = VENUES.find(v => v.type === formData.venue);
+    const selectedVenue = venuesList.find(v => v.type === formData.venue);
     if (!selectedVenue) return;
 
     let price = 0;
     if (formData.venue === 'Football Pitch') {
-      price = selectedVenue.price * (formData.duration || 1);
+      // Use specific prices for durations if defined in the editable pricing
+      const duration = formData.duration || 1;
+      const specificItem = pricing.find(p => 
+        p.category === 'Venue' && 
+        p.title.includes('Football') && 
+        (p.title.includes(`${duration} Hour`) || p.title.includes(`${duration} hr`))
+      );
+      
+      if (specificItem) {
+        price = specificItem.price;
+      } else {
+        // Fallback to linear
+        price = selectedVenue.price * duration;
+      }
     } else if (formData.venue === 'Kids Playground') {
-       // 200 naira gate fee per individual (adults + children)
-       const totalGuests = (formData.guests?.children || 0) + (formData.guests?.adults || 0);
-       price = totalGuests * selectedVenue.price;
+       // 200 naira gate fee per child as requested
+       const totalChildren = formData.guests?.children || 0;
+       price = totalChildren * selectedVenue.price;
     } else {
-      // Per day calculation for Courtyard/Palm Garden
+      // Per day calculation for Courtyard/Palm Garden/Sendforth
       let days = 1;
-      if (formData.date && formData.endDate) {
+      if (formData.date && formData.endDate && formData.venue !== 'Sendforth Event') {
         const start = new Date(formData.date);
         const end = new Date(formData.endDate);
         const diffTime = Math.abs(end.getTime() - start.getTime());
@@ -106,7 +156,7 @@ const Booking: React.FC = () => {
       price = selectedVenue.price * days;
     }
     setTotalPrice(price);
-  }, [formData]);
+  }, [formData, venuesList, pricing]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -515,25 +565,25 @@ const Booking: React.FC = () => {
                       <Calendar size={20} /> Event Details
                     </h3>
                     
-                    <div>
-                      <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Select Venue</label>
-                      <div className="grid grid-cols-2 gap-3">
-                        {VENUES.map(v => (
-                          <div 
-                            key={v.type}
-                            onClick={() => setFormData(prev => ({ ...prev, venue: v.type, endDate: '', time: '' }))}
-                            className={`cursor-pointer p-4 rounded-xl border transition-all ${
-                              formData.venue === v.type 
-                              ? 'bg-gradient-to-r from-blue-500 to-emerald-500 text-white border-blue-600 shadow-lg scale-105' 
-                              : 'bg-white/40 dark:bg-black/20 border-gray-300 dark:border-gray-700 hover:bg-white/60'
-                            }`}
-                          >
-                            <div className="font-bold text-sm">{v.type}</div>
-                            <div className="text-xs opacity-80">₦{v.price.toLocaleString()} {v.unit}</div>
-                          </div>
-                        ))}
+                      <div>
+                        <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Select Venue</label>
+                        <div className="grid grid-cols-2 gap-3">
+                          {venuesList.map(v => (
+                            <div 
+                              key={v.type}
+                              onClick={() => setFormData(prev => ({ ...prev, venue: v.type, endDate: '', time: '' }))}
+                              className={`cursor-pointer p-4 rounded-xl border transition-all ${
+                                formData.venue === v.type 
+                                ? 'bg-gradient-to-r from-blue-500 to-emerald-500 text-white border-blue-600 shadow-lg scale-105' 
+                                : 'bg-white/40 dark:bg-black/20 border-gray-300 dark:border-gray-700 hover:bg-white/60'
+                              }`}
+                            >
+                              <div className="font-bold text-sm">{v.type}</div>
+                              <div className="text-xs opacity-80">₦{v.price.toLocaleString()} {v.unit}</div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
 
                     <div className="grid md:grid-cols-2 gap-4">
                       <div>

@@ -2,19 +2,19 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { GlassCard } from './GlassUI';
 import { useData } from '../context/DataContext';
-import { Instagram, Facebook, Info, Palmtree, Beer, Coffee, Wine } from 'lucide-react';
+import { Instagram, Facebook, Info, Palmtree, Beer, Coffee, Wine, Utensils } from 'lucide-react';
 
 const Pricing: React.FC = () => {
-  const { pricing, logo, drinksMenu } = useData();
+  const { pricing, logo, drinksMenu, kitchenMenu } = useData();
 
   const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'BEVERAGES': return <Coffee className="text-emerald-500" size={20} />;
-      case 'ENERGY DRINKS': return <Palmtree className="text-emerald-500" size={20} />;
-      case 'BEER': return <Beer className="text-emerald-500" size={20} />;
-      case 'WINE, GIN, SPIRIT': return <Wine className="text-emerald-500" size={20} />;
-      default: return <Palmtree className="text-emerald-500" size={20} />;
-    }
+    const cat = category.toUpperCase();
+    if (cat.includes('BEVERAGE')) return <Coffee className="text-emerald-500" size={20} />;
+    if (cat.includes('ENERGY')) return <Palmtree className="text-emerald-500" size={20} />;
+    if (cat.includes('BEER')) return <Beer className="text-emerald-500" size={20} />;
+    if (cat.includes('WINE') || cat.includes('GIN') || cat.includes('SPIRIT')) return <Wine className="text-emerald-500" size={20} />;
+    if (cat.includes('RICE') || cat.includes('PASTA') || cat.includes('YAM') || cat.includes('PLANTAIN') || cat.includes('SNACK') || cat.includes('MEAT') || cat.includes('SOUP')) return <Utensils className="text-emerald-500" size={20} />;
+    return <Palmtree className="text-emerald-500" size={20} />;
   };
 
   return (
@@ -53,39 +53,87 @@ const Pricing: React.FC = () => {
         </motion.div>
 
         {/* Drinks Menu Sections */}
-        <div className="space-y-12">
-          {drinksMenu.map((cat, catIdx) => (
-            <motion.div
-              key={cat.category}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: catIdx * 0.1 }}
-            >
-              <div className="flex items-center gap-3 mb-6 border-b border-emerald-500/20 pb-2">
-                {getCategoryIcon(cat.category)}
-                <h3 className="text-xl font-bold text-emerald-700 dark:text-emerald-400 tracking-wider uppercase">
-                  {cat.category}
-                </h3>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
-                {cat.items.map((item, itemIdx) => (
-                  <div 
-                    key={itemIdx} 
-                    className="flex items-end justify-between group py-1 border-b border-dashed border-gray-200 dark:border-gray-700 hover:border-emerald-500/50 transition-colors"
-                  >
-                    <span className="text-gray-700 dark:text-gray-200 font-medium group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                      {item.name}
-                    </span>
-                    <div className="flex-grow mx-2 border-b border-dotted border-gray-300 dark:border-gray-600 mb-1 opacity-50"></div>
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold whitespace-nowrap">
-                      {item.price}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          ))}
+        <div className="mb-20">
+          <div className="flex items-center gap-4 mb-8">
+            <Beer className="text-emerald-600" size={32} />
+            <h2 className="text-3xl font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-tighter">Drinks Collection</h2>
+          </div>
+          <div className="space-y-12">
+            {drinksMenu.map((cat, catIdx) => (
+              <motion.div
+                key={cat.category}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: catIdx * 0.1 }}
+              >
+                <div className="flex items-center gap-3 mb-6 border-b border-emerald-500/20 pb-2">
+                  {getCategoryIcon(cat.category)}
+                  <h3 className="text-xl font-bold text-emerald-700 dark:text-emerald-400 tracking-wider uppercase">
+                    {cat.category}
+                  </h3>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
+                  {cat.items.map((item, itemIdx) => (
+                    <div 
+                      key={itemIdx} 
+                      className="flex items-end justify-between group py-1 border-b border-dashed border-gray-200 dark:border-gray-700 hover:border-emerald-500/50 transition-colors"
+                    >
+                      <span className="text-gray-700 dark:text-gray-200 font-medium group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                        {item.name}
+                      </span>
+                      <div className="flex-grow mx-2 border-b border-dotted border-gray-300 dark:border-gray-600 mb-1 opacity-50"></div>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold whitespace-nowrap">
+                        {item.price}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        {/* Kitchen Menu Sections */}
+        <div className="mb-20 pt-16 border-t border-emerald-500/10">
+          <div className="flex items-center gap-4 mb-8">
+            <Utensils className="text-emerald-600" size={32} />
+            <h2 className="text-3xl font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-tighter">Kitchen Menu</h2>
+          </div>
+          <div className="space-y-12">
+            {kitchenMenu.map((cat, catIdx) => (
+              <motion.div
+                key={cat.category}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: catIdx * 0.1 }}
+              >
+                <div className="flex items-center gap-3 mb-6 border-b border-emerald-500/20 pb-2">
+                  {getCategoryIcon(cat.category)}
+                  <h3 className="text-xl font-bold text-emerald-700 dark:text-emerald-400 tracking-wider uppercase">
+                    {cat.category}
+                  </h3>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
+                  {cat.items.map((item, itemIdx) => (
+                    <div 
+                      key={itemIdx} 
+                      className="flex items-end justify-between group py-1 border-b border-dashed border-gray-200 dark:border-gray-700 hover:border-emerald-500/50 transition-colors"
+                    >
+                      <span className="text-gray-700 dark:text-gray-200 font-medium group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                        {item.name}
+                      </span>
+                      <div className="flex-grow mx-2 border-b border-dotted border-gray-300 dark:border-gray-600 mb-1 opacity-50"></div>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold whitespace-nowrap">
+                        {item.price}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            ))}
+          </div>
         </div>
 
         {/* Disclaimer & Socials */}

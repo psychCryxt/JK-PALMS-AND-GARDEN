@@ -1,4 +1,4 @@
-export type VenueType = 'Courtyard' | 'Football Pitch' | 'Palm Garden' | 'Kids Playground';
+export type VenueType = 'Courtyard' | 'Football Pitch' | 'Palm Garden' | 'Kids Playground' | 'Sendforth Event';
 
 export interface Testimonial {
   id: number;
@@ -79,12 +79,16 @@ export interface BlogPost {
   image: string;
 }
 
-export interface DrinkItem {
+export interface MenuItem {
   name: string;
   price: string;
 }
 
-export interface DrinkCategory {
+export interface MenuCategory {
   category: string;
-  items: DrinkItem[];
+  items: MenuItem[];
 }
+
+// Keep aliases for backward compatibility if needed, but we'll try to migrate
+export type DrinkItem = MenuItem;
+export type DrinkCategory = MenuCategory;

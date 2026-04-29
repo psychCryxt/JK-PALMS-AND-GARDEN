@@ -2,15 +2,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GlassCard, GlassButton } from './GlassUI';
 import { useData } from '../context/DataContext';
-import { Lock, LogOut, Check, X, Edit2, Trash2, Image as ImageIcon, RefreshCw, Loader2, Upload, Plus, Citrus, Calendar, Cloud, CloudOff, Save, AlertTriangle, Tag, Target } from 'lucide-react';
-import { BookingRecord, EventItem, PricingItem } from '../types';
+import { Lock, LogOut, Check, X, Edit2, Trash2, Image as ImageIcon, RefreshCw, Loader2, Upload, Plus, Citrus, Calendar, Cloud, CloudOff, Save, AlertTriangle, Tag, Target, Utensils } from 'lucide-react';
+import { BookingRecord, EventItem, PricingItem, MenuCategory } from '../types';
 import { supabase } from '../lib/supabase';
 
 const AdminPanel: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [activeTab, setActiveTab] = useState<'bookings' | 'features' | 'gallery' | 'content' | 'events' | 'pricing' | 'drinks'>('bookings');
+  const [activeTab, setActiveTab] = useState<'bookings' | 'features' | 'gallery' | 'content' | 'events' | 'pricing' | 'drinks' | 'kitchen'>('bookings');
   
   const [dbBookings, setDbBookings] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -29,6 +29,7 @@ const AdminPanel: React.FC = () => {
     events, updateEvents,
     pricing, updatePricing,
     drinksMenu, updateDrinksMenu,
+    kitchenMenu, updateKitchenMenu,
     syncStatus,
     syncError 
   } = useData();
@@ -211,6 +212,41 @@ const AdminPanel: React.FC = () => {
     updateDrinksMenu(newMenu);
   };
 
+  // --- Kitchen Menu Management ---
+  const handleAddKitchenCategory = () => {
+    updateKitchenMenu([...kitchenMenu, { category: 'NEW CATEGORY', items: [] }]);
+  };
+
+  const handleDeleteKitchenCategory = (index: number) => {
+    if (window.confirm("Delete this entire category and all its items?")) {
+      updateKitchenMenu(kitchenMenu.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleKitchenCategoryNameChange = (index: number, name: string) => {
+    const newMenu = [...kitchenMenu];
+    newMenu[index].category = name;
+    updateKitchenMenu(newMenu);
+  };
+
+  const handleAddKitchenItem = (catIndex: number) => {
+    const newMenu = [...kitchenMenu];
+    newMenu[catIndex].items.push({ name: 'New Item', price: '₦0' });
+    updateKitchenMenu(newMenu);
+  };
+
+  const handleDeleteKitchenItem = (catIndex: number, itemIndex: number) => {
+    const newMenu = [...kitchenMenu];
+    newMenu[catIndex].items = newMenu[catIndex].items.filter((_, i) => i !== itemIndex);
+    updateKitchenMenu(newMenu);
+  };
+
+  const handleKitchenItemChange = (catIndex: number, itemIndex: number, field: 'name' | 'price', value: string) => {
+    const newMenu = [...kitchenMenu];
+    newMenu[catIndex].items[itemIndex][field] = value;
+    updateKitchenMenu(newMenu);
+  };
+
   // --- Event Management ---
   // Fix: Added missing handleEventChange function
   const handleEventChange = (index: number, field: keyof EventItem, value: any) => {
@@ -256,7 +292,7 @@ const AdminPanel: React.FC = () => {
         </div>
 
         <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
-          {['bookings', 'pricing', 'drinks', 'features', 'gallery', 'content', 'events'].map(tab => (
+          {['bookings', 'pricing', 'drinks', 'kitchen', 'features', 'gallery', 'content', 'events'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab as any)} className={`px-6 py-2 rounded-full font-bold capitalize transition-all ${activeTab === tab ? 'bg-emerald-500 text-white shadow-lg' : 'bg-white/20 hover:bg-white/40'}`}>{tab}</button>
           ))}
         </div>
@@ -350,6 +386,62 @@ const AdminPanel: React.FC = () => {
                       ))}
                       <button 
                         onClick={() => handleAddDrinkItem(catIdx)}
+                        className="flex items-center gap-2 text-emerald-500 text-sm font-bold hover:underline mt-2"
+                      >
+                        <Plus size={14} /> Add Item
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'kitchen' && (
+            <div className="space-y-8">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl font-bold flex items-center gap-2"><Utensils className="text-emerald-500"/> Kitchen Menu Editor</h3>
+                <button onClick={handleAddKitchenCategory} className="bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2">
+                  <Plus size={18}/> Add Category
+                </button>
+              </div>
+
+              <div className="space-y-10">
+                {kitchenMenu.map((cat, catIdx) => (
+                  <div key={catIdx} className="bg-white/20 dark:bg-black/30 p-6 rounded-2xl border border-white/10">
+                    <div className="flex justify-between items-center mb-6">
+                      <input 
+                        defaultValue={cat.category} 
+                        onBlur={(e) => handleKitchenCategoryNameChange(catIdx, e.target.value)}
+                        className="bg-transparent text-xl font-bold text-emerald-600 dark:text-emerald-400 border-b border-emerald-500/30 outline-none focus:border-emerald-500 w-full max-w-md uppercase tracking-wider"
+                      />
+                      <button onClick={() => handleDeleteKitchenCategory(catIdx)} className="text-red-500 hover:bg-red-500/10 p-2 rounded-lg transition-colors">
+                        <Trash2 size={20} />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                      {cat.items.map((item, itemIdx) => (
+                        <div key={itemIdx} className="flex items-center gap-3 group">
+                          <input 
+                            defaultValue={item.name} 
+                            onBlur={(e) => handleKitchenItemChange(catIdx, itemIdx, 'name', e.target.value)}
+                            className="flex-grow bg-transparent border-b border-gray-500/20 outline-none focus:border-emerald-500 py-1 text-sm"
+                            placeholder="Item Name"
+                          />
+                          <input 
+                            defaultValue={item.price} 
+                            onBlur={(e) => handleKitchenItemChange(catIdx, itemIdx, 'price', e.target.value)}
+                            className="w-24 bg-transparent border-b border-gray-500/20 outline-none focus:border-emerald-500 py-1 text-sm font-bold text-emerald-600"
+                            placeholder="Price (e.g. ₦500)"
+                          />
+                          <button onClick={() => handleDeleteKitchenItem(catIdx, itemIdx)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity">
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ))}
+                      <button 
+                        onClick={() => handleAddKitchenItem(catIdx)}
                         className="flex items-center gap-2 text-emerald-500 text-sm font-bold hover:underline mt-2"
                       >
                         <Plus size={14} /> Add Item
